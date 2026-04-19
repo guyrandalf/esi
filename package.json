@@ -27,6 +27,7 @@
     "@picovoice/porcupine-node": "^4.0.2",
     "@picovoice/pvrecorder-node": "^1.2.8",
     "better-sqlite3": "^12.9.0",
+    "dotenv": "^17.4.2",
     "framer-motion": "^11.11.17",
     "node-notifier": "^10.0.1",
     "node-record-lpcm16": "^1.0.1",

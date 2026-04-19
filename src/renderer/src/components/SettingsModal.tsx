@@ -10,14 +10,29 @@ export function SettingsModal({
   const [mem, setMem] = useState<EsiMemorySnapshot | null>(null)
   const [status, setStatus] = useState<EsiSubsystemStatus | null>(null)
   const [offline, setOffline] = useState(false)
+  const [autostart, setAutostartState] = useState<{
+    installed: boolean
+    supported: boolean
+  } | null>(null)
 
   async function refresh(): Promise<void> {
-    const [m, s] = await Promise.all([
+    const [m, s, a] = await Promise.all([
       window.esi?.getMemory(),
-      window.esi?.getStatus()
+      window.esi?.getStatus(),
+      window.esi?.getAutostartStatus?.()
     ])
     if (m) setMem(m)
     if (s) setStatus(s)
+    if (a)
+      setAutostartState({
+        installed: a.installed,
+        supported: a.supported
+      })
+  }
+
+  async function handleAutostartToggle(next: boolean): Promise<void> {
+    const res = await window.esi?.setAutostart?.(next)
+    if (res?.ok) setAutostartState((s) => (s ? { ...s, installed: next } : s))
   }
 
   useEffect(() => {
@@ -127,23 +142,46 @@ export function SettingsModal({
             )}
           </section>
 
-          {/* Offline */}
+          {/* Privacy / Startup */}
           <section>
-            <SectionTitle>Privacy</SectionTitle>
-            <label className="flex items-center gap-3 cursor-pointer text-[13px]">
+            <SectionTitle>Startup &amp; Privacy</SectionTitle>
+            <label className="flex items-center gap-3 cursor-pointer text-[13px] mb-2">
               <input
                 type="checkbox"
                 checked={offline}
                 onChange={(e) => handleOfflineToggle(e.target.checked)}
               />
-              <span style={{ color: 'var(--color-esi-text)' }}>
-                Offline mode
-              </span>
+              <span style={{ color: 'var(--color-esi-text)' }}>Offline mode</span>
               <span
                 className="text-[11px]"
                 style={{ color: 'var(--color-esi-muted)' }}
               >
                 (force Ollama; disable Gemini for this session)
+              </span>
+            </label>
+            <label
+              className="flex items-center gap-3 text-[13px]"
+              style={{
+                cursor: autostart?.supported ? 'pointer' : 'not-allowed',
+                opacity: autostart?.supported ? 1 : 0.5
+              }}
+            >
+              <input
+                type="checkbox"
+                disabled={!autostart?.supported}
+                checked={!!autostart?.installed}
+                onChange={(e) => handleAutostartToggle(e.target.checked)}
+              />
+              <span style={{ color: 'var(--color-esi-text)' }}>
+                Start ESI at login
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: 'var(--color-esi-muted)' }}
+              >
+                {autostart?.supported
+                  ? '(menu-bar only; summon with "hey ESI" or 3 claps)'
+                  : '(available in the packaged build)'}
               </span>
             </label>
           </section>

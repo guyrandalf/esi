@@ -16,7 +16,7 @@ const ROWS: Row[] = [
 
 export function StatusPanel(): React.JSX.Element {
   const [status, setStatus] = useState<EsiSubsystemStatus | null>(null)
-  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing'>('idle')
+  const [voiceState, setVoiceState] = useState<'idle' | 'recording' | 'transcribing' | 'speaking'>('idle')
 
   async function refresh(): Promise<void> {
     try {
@@ -52,8 +52,8 @@ export function StatusPanel(): React.JSX.Element {
           className="text-[11px] uppercase tracking-widest px-2 py-1.5 rounded mb-2"
           style={{
             color: 'var(--color-esi-cyan)',
-            background: 'rgba(2, 132, 199, 0.08)',
-            border: '1px solid rgba(2, 132, 199, 0.3)'
+            background: 'rgba(34, 211, 238, 0.1)',
+            border: '1px solid rgba(34, 211, 238, 0.35)'
           }}
         >
           {voiceState === 'recording' ? '● RECORDING — ⌘⇧SPACE TO SUBMIT' : '◐ TRANSCRIBING…'}

@@ -48,6 +48,21 @@ export interface ActiveMeeting {
   transcript: string
 }
 
+export interface MetricsSnapshot {
+  cpuPercent: number
+  memPercentUsed: number
+  memUsedGb: number
+  memTotalGb: number
+  uptimeMinutes: number
+  loadAvg1: number
+  latencyMs: number[]
+  latencyAvg: number
+  commandsPerHour: number[]
+  commandsToday: number
+  errorRatePct: number
+  totalCommands: number
+}
+
 export interface SubsystemStatus {
   ollama: boolean
   gemini: boolean
@@ -72,6 +87,8 @@ const api = {
     ipcRenderer.invoke('esi:get-project'),
   getMemory: (): Promise<MemorySnapshot> =>
     ipcRenderer.invoke('esi:get-memory'),
+  getMetrics: (): Promise<MetricsSnapshot> =>
+    ipcRenderer.invoke('esi:get-metrics'),
   getActiveMeeting: (): Promise<ActiveMeeting | null> =>
     ipcRenderer.invoke('esi:get-active-meeting'),
   getStatus: (): Promise<SubsystemStatus> =>
@@ -82,6 +99,15 @@ const api = {
 
   setOffline: (offline: boolean): Promise<void> =>
     ipcRenderer.invoke('esi:set-offline', offline),
+  getAutostartStatus: (): Promise<{
+    installed: boolean
+    currentBinary: boolean
+    supported: boolean
+  }> => ipcRenderer.invoke('esi:autostart-status'),
+  setAutostart: (
+    enable: boolean
+  ): Promise<{ ok: boolean; reason?: string }> =>
+    ipcRenderer.invoke('esi:autostart-set', enable),
   deletePerson: (name: string): Promise<void> =>
     ipcRenderer.invoke('esi:delete-person', name),
   setPreference: (key: string, value: string): Promise<void> =>
@@ -117,8 +143,8 @@ const api = {
     ipcRenderer.on('esi:meeting-end', h)
     return () => ipcRenderer.off('esi:meeting-end', h)
   },
-  onVoiceState: (cb: (state: 'idle' | 'recording' | 'transcribing') => void): (() => void) => {
-    const h = (_e: unknown, s: 'idle' | 'recording' | 'transcribing'): void => cb(s)
+  onVoiceState: (cb: (state: 'idle' | 'recording' | 'transcribing' | 'speaking') => void): (() => void) => {
+    const h = (_e: unknown, s: 'idle' | 'recording' | 'transcribing' | 'speaking'): void => cb(s)
     ipcRenderer.on('esi:voice-state', h)
     return () => ipcRenderer.off('esi:voice-state', h)
   },
@@ -126,6 +152,11 @@ const api = {
     const h = (_e: unknown, text: string): void => cb(text)
     ipcRenderer.on('esi:voice-heard', h)
     return () => ipcRenderer.off('esi:voice-heard', h)
+  },
+  onMicLevel: (cb: (level: number) => void): (() => void) => {
+    const h = (_e: unknown, level: number): void => cb(level)
+    ipcRenderer.on('esi:mic-level', h)
+    return () => ipcRenderer.off('esi:mic-level', h)
   }
 }
 

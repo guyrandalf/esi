@@ -1,0 +1,15 @@
+<!--
+  Tray icon source. Monochrome-on-transparent so macOS auto-tints for
+  light/dark menu bars (template image). Rasterize at 18x18 and 36x36
+  (@2x) via `sips` or `convert` when building.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="none">
+  <!-- Outer arc reactor ring -->
+  <circle cx="18" cy="18" r="13" stroke="#000" stroke-width="1.6"/>
+  <!-- Mid ring, segmented -->
+  <circle cx="18" cy="18" r="9" stroke="#000" stroke-width="1" stroke-dasharray="2 2"/>
+  <!-- Core orb -->
+  <circle cx="18" cy="18" r="4" fill="#000"/>
+  <!-- Cardinal ticks -->
+  <path d="M18 2.5v2.5 M18 31v2.5 M2.5 18H5 M31 18h2.5" stroke="#000" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

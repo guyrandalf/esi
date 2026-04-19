@@ -5,8 +5,10 @@ import { clipboard, nativeImage } from 'electron'
 import screenshot from 'screenshot-desktop'
 import * as gemini from './gemini'
 import { runAppleScript } from './applescript'
-import { addReminder } from './reminders'
+import { addReminder, listPending as listPendingReminders } from './reminders'
 import { getUnread } from './mail'
+import * as imessage from './imessage'
+import * as contacts from './contacts'
 
 const execP = promisify(exec)
 
@@ -48,6 +50,21 @@ export async function switchApp(name: string): Promise<ActionResult> {
 // ----------------- File actions -----------------
 
 export function readFile(path: string): ActionResult {
+  // Hard-block hallucinated calendar file paths. macOS Calendar is an app,
+  // not a file on disk. If calendar context is unavailable, the LLM tends
+  // to invent things like ~/Documents/Calendar/*.icalendar which don't
+  // exist — better to tell the model explicitly than return "not found"
+  // and let it keep guessing.
+  if (/\.(icalendar|ics|calendar)$/i.test(path) || /\/Calendar\//i.test(path)) {
+    return {
+      ok: false,
+      output:
+        'Calendar is an app, not a file. Read today/tomorrow events from REAL CONTEXT\'s "Today\'s calendar" section instead of READ_FILE. If REAL CONTEXT says calendar is UNAVAILABLE, say so directly — do not guess a path.',
+      requiresFollowUp: true,
+      followUpContext:
+        'READ_FILE was incorrectly emitted for a calendar path. Do not retry. Answer the user by saying calendar data is not in context right now.'
+    }
+  }
   try {
     if (!existsSync(path)) return { ok: false, output: `File not found: ${path}` }
     const content = readFileSync(path, 'utf-8')
@@ -286,6 +303,114 @@ export async function readMail(): Promise<ActionResult> {
   }
 }
 
+// ----------------- SEND_IMESSAGE -----------------
+
+async function sendIMessage(params: string): Promise<ActionResult> {
+  // Format: recipient|message text  (recipient can be a name, number, or email)
+  const sep = params.indexOf('|')
+  if (sep < 0) {
+    return {
+      ok: false,
+      output: 'SEND_IMESSAGE needs "recipient|message" format.'
+    }
+  }
+  const rawRecipient = params.slice(0, sep).trim()
+  const text = params.slice(sep + 1).trim()
+  if (!rawRecipient || !text) {
+    return { ok: false, output: 'SEND_IMESSAGE needs both a recipient and a message.' }
+  }
+
+  // If the recipient doesn't already look like a phone/email, resolve via Contacts.
+  let recipient = rawRecipient
+  const looksLikeHandle = /@|^[+\d]/.test(rawRecipient)
+  if (!looksLikeHandle) {
+    const c = await contacts.lookup(rawRecipient)
+    if (c && (c.phones.length || c.emails.length)) {
+      recipient = c.phones[0] ?? c.emails[0]
+    }
+  }
+
+  const { ok, error } = await imessage.send(recipient, text)
+  if (!ok) return { ok: false, output: `Couldn't send: ${error ?? 'unknown error'}` }
+  return { ok: true, output: `Sent to ${rawRecipient}.` }
+}
+
+// ----------------- READ_IMESSAGES -----------------
+
+async function readIMessages(): Promise<ActionResult> {
+  const msgs = imessage.recent(15)
+  if (msgs === null) {
+    return {
+      ok: false,
+      output:
+        "Can't read Messages — Full Disk Access isn't granted to ESI. Grant it in System Settings → Privacy & Security → Full Disk Access."
+    }
+  }
+  if (msgs.length === 0) return { ok: true, output: 'No recent messages.' }
+
+  const lines = msgs
+    .slice(0, 10)
+    .map((m) => {
+      const who = m.fromMe ? 'You' : m.chatName || m.handle || 'unknown'
+      const when = m.date
+        ? new Date(m.date).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+          })
+        : ''
+      return `${when} · ${who}: ${m.text.slice(0, 140)}`
+    })
+  return {
+    ok: true,
+    output: `${msgs.length} recent messages`,
+    requiresFollowUp: true,
+    followUpContext: `Recent messages:\n${lines.join('\n')}`
+  }
+}
+
+// ----------------- LIST_REMINDERS -----------------
+
+async function listRemindersAction(): Promise<ActionResult> {
+  const items = await listPendingReminders(20)
+  if (items.length === 0) return { ok: true, output: 'No pending reminders.' }
+  const lines = items.slice(0, 10).map((r) => {
+    const due = r.dueIso
+      ? ` (due ${new Date(r.dueIso).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })})`
+      : ''
+    return `• ${r.title}${due} [${r.list}]`
+  })
+  return {
+    ok: true,
+    output: `${items.length} pending reminders.`,
+    requiresFollowUp: true,
+    followUpContext: `Pending reminders:\n${lines.join('\n')}`
+  }
+}
+
+// ----------------- LOOKUP_CONTACT -----------------
+
+async function lookupContactAction(name: string): Promise<ActionResult> {
+  if (!name) return { ok: false, output: 'LOOKUP_CONTACT needs a name.' }
+  const c = await contacts.lookup(name)
+  if (!c) return { ok: false, output: `No contact matching "${name}".` }
+  const bits = [c.phones[0], c.emails[0]].filter(Boolean).join(' · ')
+  return {
+    ok: true,
+    output: `${c.name}${bits ? ' — ' + bits : ''}`,
+    requiresFollowUp: true,
+    followUpContext: `Contact ${c.name}:\nphones: ${c.phones.join(', ') || '—'}\nemails: ${c.emails.join(', ') || '—'}`
+  }
+}
+
 // ----------------- Dispatcher -----------------
 
 export async function execute(
@@ -320,6 +445,14 @@ export async function execute(
       return createReminder(params)
     case 'READ_MAIL':
       return readMail()
+    case 'SEND_IMESSAGE':
+      return sendIMessage(params)
+    case 'READ_IMESSAGES':
+      return readIMessages()
+    case 'LIST_REMINDERS':
+      return listRemindersAction()
+    case 'LOOKUP_CONTACT':
+      return lookupContactAction(params)
     default:
       return { ok: false, output: `Unknown action type: ${type}` }
   }

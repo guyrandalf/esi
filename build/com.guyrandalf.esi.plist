@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.guyrandalf.esi</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Applications/Esi.app/Contents/MacOS/Esi</string>
+  </array>
+
+  <!-- Start when the user logs in. Don't auto-relaunch if the user quits
+       intentionally (KeepAlive.SuccessfulExit: false means "only restart
+       if it crashed"). -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
+
+  <!-- Interactive so the app has access to the user's window server,
+       audio devices, and system permissions. -->
+  <key>ProcessType</key>
+  <string>Interactive</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>ESI_START_MODE</key>
+    <string>menubar</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/esi.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/esi.err.log</string>
+</dict>
+</plist>

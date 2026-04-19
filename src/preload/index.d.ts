@@ -47,6 +47,21 @@ declare global {
     transcript: string
   }
 
+  interface EsiMetricsSnapshot {
+    cpuPercent: number
+    memPercentUsed: number
+    memUsedGb: number
+    memTotalGb: number
+    uptimeMinutes: number
+    loadAvg1: number
+    latencyMs: number[]
+    latencyAvg: number
+    commandsPerHour: number[]
+    commandsToday: number
+    errorRatePct: number
+    totalCommands: number
+  }
+
   interface EsiSubsystemStatus {
     ollama: boolean
     gemini: boolean
@@ -66,11 +81,18 @@ declare global {
       getSystem: () => Promise<EsiSystemSnapshot>
       getProject: () => Promise<EsiProjectContext | null>
       getMemory: () => Promise<EsiMemorySnapshot>
+      getMetrics: () => Promise<EsiMetricsSnapshot>
       getActiveMeeting: () => Promise<EsiActiveMeeting | null>
       getStatus: () => Promise<EsiSubsystemStatus>
       startVoice: () => Promise<void>
       stopVoice: () => Promise<void>
       setOffline: (offline: boolean) => Promise<void>
+      getAutostartStatus: () => Promise<{
+        installed: boolean
+        currentBinary: boolean
+        supported: boolean
+      }>
+      setAutostart: (enable: boolean) => Promise<{ ok: boolean; reason?: string }>
       deletePerson: (name: string) => Promise<void>
       setPreference: (key: string, value: string) => Promise<void>
       setIgnoreMouse: (ignore: boolean) => void
@@ -79,8 +101,9 @@ declare global {
       onMeetingStart: (cb: (info: { app: string; startedAt: number }) => void) => () => void
       onMeetingTranscript: (cb: (text: string) => void) => () => void
       onMeetingEnd: (cb: (info: { app: string; durationMin: number; summary: string; transcript: string }) => void) => () => void
-      onVoiceState: (cb: (state: 'idle' | 'recording' | 'transcribing') => void) => () => void
+      onVoiceState: (cb: (state: 'idle' | 'recording' | 'transcribing' | 'speaking') => void) => () => void
       onVoiceHeard: (cb: (text: string) => void) => () => void
+      onMicLevel: (cb: (level: number) => void) => () => void
     }
   }
 }

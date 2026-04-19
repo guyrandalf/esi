@@ -1,25 +1,44 @@
-import { useState, useEffect } from 'react'
-import { Sidebar } from './Sidebar'
+import { useEffect, useState } from 'react'
 import { ConversationView } from './ConversationView'
 import { InputBar } from './InputBar'
 import { ActivityColumn } from './ActivityColumn'
-import { ArcReactor } from './panels/ArcReactor'
 import { MeetingOverlay } from './MeetingOverlay'
 import { SettingsModal } from './SettingsModal'
+import { TopBar, type TabId } from './TopBar'
+import { BootSequence } from './BootSequence'
+import { BottomTicker } from './BottomTicker'
+import { GridBackdrop, Scanlines, Vignette } from './GridBackdrop'
+import { ArcReactor, type VoiceState } from './panels/ArcReactor'
+import { ClockPanel } from './panels/ClockPanel'
+import { ActiveTask } from './panels/ActiveTask'
+import { MetricsPanel } from './panels/MetricsPanel'
+import { CalendarStrip } from './panels/CalendarStrip'
+import { SubsystemDiagnostic } from './panels/SubsystemDiagnostic'
+import { InputLevel } from './panels/InputLevel'
+import { PanelShell } from './shared/PanelShell'
+import { MemoryView } from './views/MemoryView'
+import { MeetingsView } from './views/MeetingsView'
+import { ArchiveView } from './views/ArchiveView'
 
 export function AppShell(): React.JSX.Element {
+  const [booted, setBooted] = useState(false)
   const [thinking, setThinking] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle')
+  const [currentTab, setCurrentTab] = useState<TabId>('overview')
 
   async function handleSubmit(text: string): Promise<void> {
     setThinking(true)
+    setVoiceState('thinking')
     try {
       await window.esi?.sendCommand(text)
     } finally {
       setThinking(false)
+      setVoiceState((prev) => (prev === 'thinking' ? 'idle' : prev))
     }
   }
 
+  // Settings hotkey
   useEffect(() => {
     const h = (e: KeyboardEvent): void => {
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
@@ -31,148 +50,184 @@ export function AppShell(): React.JSX.Element {
     return () => window.removeEventListener('keydown', h)
   }, [])
 
+  // Voice state from hotkey-driven capture and TTS playback
+  useEffect(() => {
+    const off = window.esi?.onVoiceState?.((s) => {
+      if (s === 'recording') setVoiceState('listening')
+      else if (s === 'transcribing') setVoiceState('thinking')
+      else if (s === 'speaking') setVoiceState('speaking')
+      else setVoiceState('idle')
+    })
+    return () => off?.()
+  }, [])
+
+  if (!booted) {
+    return <BootSequence onDone={() => setBooted(true)} />
+  }
+
   return (
-    /*
-      IMPORTANT: This is the outermost container.
-      Using a simple flex column with a hardcoded margin on the inner wrapper
-      to guarantee nothing ever touches screen edges.
-    */
     <div
       style={{
+        position: 'relative',
         width: '100vw',
         height: '100vh',
-        position: 'relative',
         overflow: 'hidden',
-        pointerEvents: 'none'
+        background: 'var(--color-esi-bg-0)'
       }}
     >
-      {/* Arc Reactor — fixed center, behind panels */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}
-      >
-        <ArcReactor thinking={thinking} />
-      </div>
+      <GridBackdrop />
 
-      {/* The actual padded content frame — ALL panels live inside this box */}
       <div
         style={{
-          position: 'absolute',
-          top: '32px',
-          left: '32px',
-          right: '32px',
-          bottom: '32px',
+          position: 'relative',
+          zIndex: 2,
+          height: '100%',
           display: 'flex',
-          gap: '24px',
-          zIndex: 10,
-          pointerEvents: 'none'
+          flexDirection: 'column'
         }}
       >
-        {/* LEFT COLUMN */}
+        <TopBar
+          voiceState={voiceState}
+          currentTab={currentTab}
+          onTab={setCurrentTab}
+          onSettings={() => setSettingsOpen(true)}
+        />
+
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          {currentTab === 'overview' && (
+            <OverviewLayout thinking={thinking} voiceState={voiceState} />
+          )}
+          {currentTab === 'memory' && <SingleLayout><MemoryView /></SingleLayout>}
+          {currentTab === 'meetings' && <SingleLayout><MeetingsView /></SingleLayout>}
+          {currentTab === 'archive' && <SingleLayout><ArchiveView /></SingleLayout>}
+        </div>
+
+        {/* Input bar — pinned between the grid and the ticker */}
         <div
           style={{
-            width: '360px',
-            minWidth: '360px',
-            maxWidth: '360px',
+            padding: '0 16px 12px',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            pointerEvents: 'auto',
-            paddingBottom: '80px' /* leave room for input bar */
+            justifyContent: 'center',
+            flexShrink: 0
           }}
         >
-          <Sidebar />
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <ConversationView thinking={thinking} />
+          <div style={{ width: '100%', maxWidth: 760 }}>
+            <InputBar
+              onSubmit={handleSubmit}
+              thinking={thinking}
+              voiceState={voiceState}
+            />
           </div>
         </div>
 
-        {/* CENTER — empty for Arc Reactor to show through */}
-        <div style={{ flex: 1, minWidth: 0 }} />
-
-        {/* RIGHT COLUMN */}
-        <div
-          style={{
-            width: '360px',
-            minWidth: '360px',
-            maxWidth: '360px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            pointerEvents: 'auto',
-            paddingBottom: '80px'
-          }}
-        >
-          {/* Diagnostics mini-panel */}
-          <div
-            className="hud-panel rounded-2xl"
-            style={{
-              background: 'var(--color-esi-panel)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid var(--color-esi-panel-border)',
-              boxShadow: '0 4px 20px rgba(15, 18, 32, 0.06)',
-              padding: '20px',
-              pointerEvents: 'auto',
-              flexShrink: 0
-            }}
-            onMouseEnter={() => window.esi?.setIgnoreMouse(false)}
-            onMouseLeave={() => window.esi?.setIgnoreMouse(true)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ width: '4px', height: '16px', borderRadius: '2px', background: 'var(--color-esi-gold)' }} />
-              <span
-                style={{
-                  fontFamily: 'var(--font-orbitron)',
-                  color: 'var(--color-esi-gold)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.2em'
-                }}
-              >
-                Diagnostics
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ opacity: 0.4 }}>Threat Level</span><span>Nominal</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ opacity: 0.4 }}>Energy Matrix</span><span>98.4%</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ opacity: 0.4 }}>Neural Threads</span><span>Multiplexing</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ opacity: 0.4 }}>Mem Pool</span><span>Stable</span></div>
-            </div>
-          </div>
-
-          {/* System Logs */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <ActivityColumn />
-          </div>
-        </div>
+        <BottomTicker />
       </div>
 
-      {/* Input Bar — pinned bottom center, inside the same 32px margin */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '32px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '560px',
-          zIndex: 20,
-          pointerEvents: 'auto'
-        }}
-      >
-        <InputBar onSubmit={handleSubmit} thinking={thinking} />
-      </div>
+      <Scanlines />
+      <Vignette />
 
       <MeetingOverlay />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </div>
+  )
+}
+
+function OverviewLayout({
+  thinking,
+  voiceState
+}: {
+  thinking: boolean
+  voiceState: VoiceState
+}): React.JSX.Element {
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns:
+          'minmax(280px, 320px) minmax(0, 1fr) minmax(340px, 380px)',
+        gap: 16,
+        padding: 16,
+        minHeight: 0,
+        overflow: 'hidden'
+      }}
+    >
+      {/* LEFT · Clock · ActiveTask · Metrics */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: 'auto auto 1fr',
+          gap: 16,
+          minHeight: 0,
+          overflow: 'hidden'
+        }}
+      >
+        <ClockPanel />
+        <PanelShell title="Active Task Context">
+          <ActiveTask />
+        </PanelShell>
+        <div style={{ minHeight: 0, overflow: 'auto' }}>
+          <MetricsPanel />
+        </div>
+      </div>
+
+      {/* CENTER · ArcReactor · InputLevel · Subsystem diagnostic */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: 'minmax(0, 1fr) auto auto',
+          gap: 16,
+          minHeight: 0,
+          overflow: 'hidden'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            minHeight: 0,
+            minWidth: 0
+          }}
+        >
+          <ArcReactor state={voiceState} />
+        </div>
+        <InputLevel state={voiceState} />
+        <SubsystemDiagnostic />
+      </div>
+
+      {/* RIGHT · Conversation · Agenda · MissionLog */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: 'minmax(0, 1.3fr) auto minmax(0, 1fr)',
+          gap: 16,
+          minHeight: 0,
+          overflow: 'hidden'
+        }}
+      >
+        <ConversationView thinking={thinking} />
+        <CalendarStrip />
+        <ActivityColumn />
+      </div>
+    </div>
+  )
+}
+
+function SingleLayout({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div
+      style={{
+        flex: 1,
+        padding: 16,
+        minHeight: 0,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
+      {children}
     </div>
   )
 }

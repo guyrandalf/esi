@@ -1,33 +1,72 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Surface — light cinematic, off-white with a hint of blue */
-  --color-esi-bg: #f3f5fa;
-  --color-esi-bg-solid: #ffffff;
-  --color-esi-panel: rgba(255, 255, 255, 0.82);
-  --color-esi-panel-border: rgba(15, 18, 32, 0.08);
-  --color-esi-panel-inset: rgba(15, 18, 32, 0.04);
+  /* Core surface — deep space black */
+  --color-esi-bg-0: #03070d;
+  --color-esi-bg-1: #060c15;
+  --color-esi-bg-2: #0a131f;
+  --color-esi-bg-3: #0f1b2c;
 
-  /* Text — rich near-black primary, grays for hierarchy */
-  --color-esi-text: #0f1220;
-  --color-esi-text-dim: #4a5063;
-  --color-esi-muted: #8a90a0;
+  /* HUD cyan ramp */
+  --color-esi-c-50:  #eafcff;
+  --color-esi-c-100: #b8f1ff;
+  --color-esi-c-200: #7ee7ff;
+  --color-esi-c-300: #4dd8f7;
+  --color-esi-c-400: #2ab5d9;
+  --color-esi-c-500: #1a8fb8;
+  --color-esi-c-600: #116c90;
+  --color-esi-c-700: #0a4d6b;
+  --color-esi-c-800: #063346;
+  --color-esi-c-900: #041f2c;
 
-  /* Accents — deeper so they stay punchy on a light canvas */
-  --color-esi-cyan: #0284c7;
-  --color-esi-violet: #7c3aed;
-  --color-esi-green: #059669;
-  --color-esi-gold: #b45309;
-  --color-esi-red: #dc2626;
+  /* Accents */
+  --color-esi-amber: #ffb347;
+  --color-esi-amber-dim: #8a5a1a;
+  --color-esi-alert: #ff4d4d;
+  --color-esi-good: #6bffb8;
 
-  /* Semantic aliases */
-  --color-esi-primary: var(--color-esi-cyan);
-  --color-esi-success: var(--color-esi-green);
-  --color-esi-warning: var(--color-esi-gold);
-  --color-esi-critical: var(--color-esi-red);
+  /* Text */
+  --color-esi-fg: #d7f3ff;
+  --color-esi-fg-dim: #7aa8bf;
+  --color-esi-fg-dimmer: #3d637a;
 
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-orbitron: 'Orbitron', sans-serif;
+  /* Grid backdrop */
+  --color-esi-grid: rgba(126, 231, 255, 0.05);
+  --color-esi-grid-strong: rgba(126, 231, 255, 0.12);
+
+  /* Typography */
+  --font-display: 'Michroma', 'Orbitron', 'JetBrains Mono', ui-monospace, monospace;
+  --font-ui: 'Rajdhani', 'Barlow Semi Condensed', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Legacy aliases — kept so old components keep compiling until migrated */
+  --color-esi-bg: var(--color-esi-bg-0);
+  --color-esi-bg-solid: var(--color-esi-bg-1);
+  --color-esi-panel: linear-gradient(180deg, rgba(10, 19, 31, 0.7), rgba(6, 12, 21, 0.85));
+  --color-esi-panel-strong: rgba(6, 12, 21, 0.92);
+  --color-esi-panel-border: rgba(126, 231, 255, 0.18);
+  --color-esi-panel-border-strong: rgba(126, 231, 255, 0.35);
+  --color-esi-panel-inset: rgba(126, 231, 255, 0.04);
+  --color-esi-panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 40px -8px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(126, 231, 255, 0.04);
+
+  --color-esi-text: var(--color-esi-fg);
+  --color-esi-text-dim: var(--color-esi-fg-dim);
+  --color-esi-muted: var(--color-esi-fg-dimmer);
+
+  --color-esi-cyan: var(--color-esi-c-200);
+  --color-esi-violet: #a78bfa;
+  --color-esi-green: var(--color-esi-good);
+  --color-esi-gold: var(--color-esi-amber);
+  --color-esi-red: var(--color-esi-alert);
+
+  --color-esi-primary: var(--color-esi-c-200);
+  --color-esi-success: var(--color-esi-good);
+  --color-esi-warning: var(--color-esi-amber);
+  --color-esi-critical: var(--color-esi-alert);
+
+  --font-orbitron: var(--font-display);
 }
 
 * {
@@ -41,13 +80,24 @@ body,
 #root {
   width: 100vw;
   height: 100vh;
-  background: var(--color-esi-bg);
+  background: var(--color-esi-bg-0);
   overflow: hidden;
-  color: var(--color-esi-text);
-  font-family: var(--font-mono);
+  color: var(--color-esi-fg);
+  font-family: var(--font-ui);
   font-size: 14px;
   line-height: 1.55;
+  letter-spacing: 0.02em;
   -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 button,
@@ -71,17 +121,139 @@ textarea,
   -webkit-app-region: no-drag;
 }
 
+/* ─────────── Panel chrome ─────────── */
+.panel {
+  position: relative;
+  border: 1px solid rgba(126, 231, 255, 0.18);
+  background: linear-gradient(180deg, rgba(10, 19, 31, 0.7), rgba(6, 12, 21, 0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: var(--color-esi-c-200);
+  border-style: solid;
+}
+.panel::before {
+  top: -1px;
+  left: -1px;
+  border-width: 1px 0 0 1px;
+}
+.panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 1px 1px 0;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(126, 231, 255, 0.15);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-esi-c-200);
+}
+.panel-head .dot {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-esi-c-200);
+  box-shadow: 0 0 8px var(--color-esi-c-200);
+}
+
+/* Glow utilities */
+.glow-c {
+  text-shadow: 0 0 8px rgba(126, 231, 255, 0.6), 0 0 2px rgba(126, 231, 255, 0.9);
+}
+.glow-a {
+  text-shadow: 0 0 8px rgba(255, 179, 71, 0.6);
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid rgba(126, 231, 255, 0.25);
+  background: rgba(126, 231, 255, 0.04);
+  color: var(--color-esi-c-200);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
-  background: rgba(15, 18, 32, 0.14);
+  background: rgba(126, 231, 255, 0.2);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(15, 18, 32, 0.28);
+  background: rgba(126, 231, 255, 0.4);
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+/* ─────────── Animations ─────────── */
+@keyframes esi-rotate-cw {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes esi-rotate-ccw {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes esi-pulse-glow {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes esi-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.4;
+  }
+  94% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0.7;
+  }
+  97% {
+    opacity: 1;
+  }
+}
+@keyframes esi-blink {
+  50% {
+    opacity: 0;
+  }
 }

@@ -3,33 +3,36 @@ import { useEffect, useState } from 'react'
 interface UiEvent {
   time: string
   title: string
-  soon: boolean
-  past: boolean
+  active: boolean
+  done: boolean
   allDay: boolean
 }
 
 function toUi(events: EsiCalendarEvent[]): UiEvent[] {
   const now = Date.now()
-  const soonMs = 15 * 60 * 1000
   return events.map((e) => {
     const startMs = new Date(e.startIso).getTime()
     const endMs = new Date(e.endIso).getTime()
     return {
       time: e.allDay
-        ? 'ALL DAY'
+        ? 'ALL'
         : new Date(e.startIso).toLocaleTimeString('en-US', {
-            hour: 'numeric',
+            hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: false
           }),
       title: e.title,
       allDay: e.allDay,
-      soon: startMs - now > 0 && startMs - now < soonMs,
-      past: endMs < now
+      active: now >= startMs && now < endMs,
+      done: endMs < now
     }
   })
 }
 
+/**
+ * AgendaPanel — JARVIS agenda style. Kept the old name `CalendarStrip`
+ * so existing imports keep working; content is now the full-panel AgendaPanel.
+ */
 export function CalendarStrip(): React.JSX.Element {
   const [events, setEvents] = useState<UiEvent[] | null>(null)
 
@@ -37,14 +40,14 @@ export function CalendarStrip(): React.JSX.Element {
     try {
       const raw = (await window.esi?.getCalendar()) ?? []
       const now = Date.now()
+      const endOfToday = new Date()
+      endOfToday.setHours(23, 59, 59, 999)
       const todayOnly = raw.filter((e) => {
         const start = new Date(e.startIso).getTime()
         const end = new Date(e.endIso).getTime()
-        const endOfToday = new Date()
-        endOfToday.setHours(23, 59, 59, 999)
         return end >= now - 30 * 60 * 1000 && start <= endOfToday.getTime()
       })
-      setEvents(toUi(todayOnly).slice(0, 5))
+      setEvents(toUi(todayOnly).slice(0, 8))
     } catch {
       setEvents([])
     }
@@ -56,49 +59,101 @@ export function CalendarStrip(): React.JSX.Element {
     return () => clearInterval(id)
   }, [])
 
-  if (events === null) {
-    return (
-      <p
-        className="text-[11px] uppercase tracking-widest"
-        style={{ color: 'var(--color-esi-muted)' }}
-      >
-        [SYNCING CALENDAR…]
-      </p>
-    )
-  }
-  if (events.length === 0) {
-    return (
-      <p
-        className="text-[11px] uppercase tracking-widest"
-        style={{ color: 'var(--color-esi-muted)' }}
-      >
-        [NO EVENTS TODAY]
-      </p>
-    )
-  }
-
   return (
-    <ul className="space-y-3 font-mono tracking-tight">
-      {events.map((e, i) => (
-        <li
-          key={i}
-          className="flex items-baseline gap-3 text-[12.5px] uppercase"
-          style={{ opacity: e.past ? 0.45 : 1 }}
-        >
-          <span
-            className="w-[72px] shrink-0 font-bold tracking-widest"
+    <div className="panel">
+      <div className="panel-head">
+        <span>
+          <span className="dot" />
+          AGENDA · TODAY
+        </span>
+        <span className="mono" style={{ fontSize: 9, color: 'var(--color-esi-fg-dim)' }}>
+          {events === null ? 'SYNC…' : `${events.length} EVENTS`}
+        </span>
+      </div>
+      <div style={{ padding: '8px 0' }}>
+        {events === null && (
+          <div
+            className="mono"
             style={{
-              color: e.soon
-                ? 'var(--color-esi-gold)'
-                : 'var(--color-esi-muted)',
-              fontSize: '11px'
+              padding: '8px 14px',
+              fontSize: 10,
+              color: 'var(--color-esi-fg-dim)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
             }}
           >
-            [{e.time}]
-          </span>
-          <span style={{ color: 'var(--color-esi-text)' }}>{e.title}</span>
-        </li>
-      ))}
-    </ul>
+            Syncing calendar…
+          </div>
+        )}
+        {events !== null && events.length === 0 && (
+          <div
+            className="mono"
+            style={{
+              padding: '8px 14px',
+              fontSize: 10,
+              color: 'var(--color-esi-fg-dim)',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase'
+            }}
+          >
+            No events today
+          </div>
+        )}
+        {events?.map((e, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '56px 1fr auto',
+              alignItems: 'center',
+              gap: 10,
+              padding: '7px 14px',
+              borderLeft: `2px solid ${
+                e.active ? 'var(--color-esi-c-200)' : e.done ? 'var(--color-esi-c-700)' : 'transparent'
+              }`,
+              background: e.active ? 'rgba(126,231,255,0.05)' : 'transparent',
+              opacity: e.done ? 0.5 : 1
+            }}
+          >
+            <span
+              className="mono"
+              style={{
+                fontSize: 11,
+                color: e.active ? 'var(--color-esi-c-100)' : 'var(--color-esi-fg-dim)',
+                letterSpacing: '0.1em'
+              }}
+            >
+              {e.time}
+            </span>
+            <span
+              style={{
+                fontSize: 13,
+                color: 'var(--color-esi-fg)',
+                textDecoration: e.done ? 'line-through' : 'none',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {e.title}
+            </span>
+            <span
+              className="mono"
+              style={{
+                fontSize: 8,
+                letterSpacing: '0.2em',
+                color: e.active ? 'var(--color-esi-c-100)' : 'var(--color-esi-fg-dim)',
+                border: `1px solid ${
+                  e.active ? 'var(--color-esi-c-200)' : 'rgba(126,231,255,0.2)'
+                }`,
+                padding: '2px 5px'
+              }}
+            >
+              {e.allDay ? 'ALL' : e.active ? 'NOW' : e.done ? 'DONE' : 'TODAY'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

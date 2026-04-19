@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { PanelShell } from './shared/PanelShell'
+import { useEffect, useRef, useState } from 'react'
 
 interface Message {
   id: number
@@ -19,6 +18,14 @@ function formatTime(iso: string): string {
   })
 }
 
+/** Strip `[ACTION:...]` tags so they never leak into the visible chat bubble. */
+function stripActionTags(text: string): string {
+  return text
+    .replace(/\[ACTION:[^\]]*\]/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 function entriesToMessages(entries: EsiLogEntry[]): Message[] {
   const out: Message[] = []
   for (const e of [...entries].reverse()) {
@@ -30,13 +37,16 @@ function entriesToMessages(entries: EsiLogEntry[]): Message[] {
       time: formatTime(e.timestamp)
     })
     if (e.response) {
-      out.push({
-        id: e.id * 2 + 1,
-        who: 'esi',
-        text: e.response,
-        ok: e.ok === 1,
-        time: formatTime(e.timestamp)
-      })
+      const clean = stripActionTags(e.response)
+      if (clean) {
+        out.push({
+          id: e.id * 2 + 1,
+          who: 'esi',
+          text: clean,
+          ok: e.ok === 1,
+          time: formatTime(e.timestamp)
+        })
+      }
     }
   }
   return out
@@ -48,6 +58,7 @@ export function ConversationView({
   thinking: boolean
 }): React.JSX.Element {
   const [messages, setMessages] = useState<Message[]>([])
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   async function refresh(): Promise<void> {
     const rows = (await window.esi?.getRecentLog(30)) ?? []
@@ -61,28 +72,51 @@ export function ConversationView({
   }, [])
 
   useEffect(() => {
-    const panel = document.querySelector('.conversation-scroll-target')
-    if (panel) panel.scrollTop = panel.scrollHeight
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
   }, [messages.length, thinking])
 
   const isEmpty = messages.length === 0 && !thinking
 
   return (
-    <PanelShell
-      title="Live Transcript"
-      glowColor="violet"
-      className="flex-1 min-h-0 conversation-scroll-target"
-      delay={0.4}
+    <div
+      className="panel"
+      style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}
     >
-      {isEmpty ? <EmptyState /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
-          ))}
-          {thinking && <ThinkingBubble />}
-        </div>
-      )}
-    </PanelShell>
+      <div className="panel-head">
+        <span>
+          <span className="dot" />
+          CONVERSATION · E.S.I
+        </span>
+        <span className="mono" style={{ fontSize: 9, color: 'var(--color-esi-good)' }}>
+          CLAUDE · READY
+        </span>
+      </div>
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          overflow: 'auto',
+          padding: '12px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          minHeight: 0
+        }}
+      >
+        {isEmpty ? (
+          <EmptyState />
+        ) : (
+          <>
+            {messages.map((m) => (
+              <MessageBubble key={m.id} message={m} />
+            ))}
+            {thinking && <ThinkingBubble />}
+          </>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -91,40 +125,56 @@ function EmptyState(): React.JSX.Element {
     <div data-selectable>
       <h1
         style={{
-          fontSize: '18px',
-          fontWeight: 700,
-          letterSpacing: '0.15em',
+          fontFamily: 'var(--font-display)',
+          fontSize: 18,
+          letterSpacing: '0.2em',
           textTransform: 'uppercase',
-          marginBottom: '4px',
-          fontFamily: 'var(--font-orbitron)',
-          color: 'var(--color-esi-text)'
+          color: 'var(--color-esi-c-100)',
+          textShadow: '0 0 10px rgba(126,231,255,0.4)',
+          marginBottom: 6
         }}
       >
         System Online
       </h1>
-      <p style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--color-esi-text-dim)', marginBottom: '16px' }}>
-        All systems active. Awaiting input...
+      <p
+        style={{
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: 'var(--color-esi-fg-dim)',
+          marginBottom: 16
+        }}
+      >
+        All systems active. Awaiting input…
       </p>
-      <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-esi-cyan)', marginBottom: '8px' }}>
+      <div
+        className="mono"
+        style={{
+          fontSize: 9,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.2em',
+          color: 'var(--color-esi-c-200)',
+          marginBottom: 8
+        }}
+      >
         Suggested
       </div>
-      <ul style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <ul style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {[
-          "What is my trajectory today?",
-          "Initialize daily standup summary",
-          "Draft communication to Lead",
-          "Open project repository"
+          "What's on my agenda today?",
+          'Summarize my recent commands',
+          'Remember that…',
+          'Open my latest project'
         ].map((s) => (
           <li
             key={s}
             style={{
-              fontSize: '11px',
+              fontSize: 12,
               padding: '8px 12px',
-              borderRadius: '8px',
               fontFamily: 'var(--font-mono)',
-              background: 'var(--color-esi-panel-inset)',
-              border: '1px solid var(--color-esi-panel-border)',
-              color: 'var(--color-esi-text-dim)',
+              background: 'rgba(126,231,255,0.04)',
+              border: '1px solid rgba(126,231,255,0.2)',
+              color: 'var(--color-esi-c-200)',
               listStyle: 'none'
             }}
           >
@@ -139,29 +189,47 @@ function EmptyState(): React.JSX.Element {
 function MessageBubble({ message }: { message: Message }): React.JSX.Element {
   const isUser = message.who === 'user'
   return (
-    <div style={{ paddingLeft: isUser ? 0 : '12px' }} data-selectable>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-        <span
-          style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: isUser ? 'var(--color-esi-cyan)' : 'var(--color-esi-violet)'
-          }}
-        >
-          {isUser ? 'You' : 'E.S.I.'}
-        </span>
-        <span style={{ fontSize: '9px', opacity: 0.35, fontVariantNumeric: 'tabular-nums' }}>
-          {message.time}
-        </span>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+        gap: 3
+      }}
+      data-selectable
+    >
+      <div
+        className="mono"
+        style={{
+          fontSize: 9,
+          color: 'var(--color-esi-fg-dimmer)',
+          letterSpacing: '0.15em',
+          display: 'flex',
+          gap: 8
+        }}
+      >
+        <span>{isUser ? 'SIR' : 'E.S.I'}</span>
+        <span>·</span>
+        <span>{message.time}</span>
       </div>
       <div
         style={{
-          fontSize: '13px',
-          lineHeight: 1.6,
-          fontFamily: 'var(--font-mono)',
-          color: message.ok ? 'var(--color-esi-text)' : 'var(--color-esi-red)'
+          maxWidth: '85%',
+          padding: '8px 12px',
+          background: isUser ? 'rgba(126,231,255,0.08)' : 'transparent',
+          border: `1px solid ${
+            isUser ? 'rgba(126,231,255,0.3)' : 'rgba(126,231,255,0.15)'
+          }`,
+          borderLeftWidth: isUser ? 1 : 2,
+          borderLeftColor: isUser ? 'rgba(126,231,255,0.3)' : 'var(--color-esi-c-200)',
+          color: message.ok
+            ? isUser
+              ? 'var(--color-esi-fg)'
+              : 'var(--color-esi-c-50)'
+            : 'var(--color-esi-alert)',
+          fontSize: 13,
+          lineHeight: 1.55,
+          fontFamily: 'var(--font-ui)'
         }}
       >
         {message.text}
@@ -172,12 +240,40 @@ function MessageBubble({ message }: { message: Message }): React.JSX.Element {
 
 function ThinkingBubble(): React.JSX.Element {
   return (
-    <div style={{ paddingLeft: '12px' }}>
-      <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--color-esi-gold)' }}>
-        E.S.I.
-      </span>
-      <div className="animate-pulse" style={{ fontSize: '13px', fontFamily: 'var(--font-mono)', color: 'var(--color-esi-gold)', marginTop: '3px' }}>
-        Processing...
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <div
+        className="mono"
+        style={{
+          fontSize: 9,
+          color: 'var(--color-esi-fg-dimmer)',
+          letterSpacing: '0.15em'
+        }}
+      >
+        E.S.I · PROCESSING
+      </div>
+      <div
+        style={{
+          padding: '8px 12px',
+          border: '1px solid rgba(126,231,255,0.15)',
+          borderLeft: '2px solid var(--color-esi-c-200)',
+          color: 'var(--color-esi-c-100)',
+          fontSize: 13,
+          fontFamily: 'var(--font-ui)',
+          maxWidth: '85%'
+        }}
+      >
+        Processing…
+        <span
+          style={{
+            display: 'inline-block',
+            width: 8,
+            height: 12,
+            background: 'var(--color-esi-c-100)',
+            marginLeft: 4,
+            verticalAlign: 'middle',
+            animation: 'esi-blink 0.8s step-end infinite'
+          }}
+        />
       </div>
     </div>
   )

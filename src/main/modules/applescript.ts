@@ -7,10 +7,12 @@ import { spawn } from 'child_process'
  */
 export function runAppleScript(
   script: string,
-  timeoutMs = 15000
+  timeoutMs = 15000,
+  language: 'AppleScript' | 'JavaScript' = 'AppleScript'
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn('osascript', ['-'], { stdio: ['pipe', 'pipe', 'pipe'] })
+    const args = language === 'JavaScript' ? ['-l', 'JavaScript', '-'] : ['-']
+    const proc = spawn('osascript', args, { stdio: ['pipe', 'pipe', 'pipe'] })
     let stdout = ''
     let stderr = ''
     let finished = false
@@ -23,7 +25,15 @@ export function runAppleScript(
       } catch {
         /* noop */
       }
-      reject(new Error('AppleScript timed out'))
+      // Include any partial stderr so the caller can diagnose permission prompts etc.
+      const partial = stderr.trim()
+      reject(
+        new Error(
+          partial
+            ? `AppleScript timed out after ${timeoutMs}ms. stderr: ${partial}`
+            : `AppleScript timed out after ${timeoutMs}ms`
+        )
+      )
     }, timeoutMs)
 
     proc.stdout.on('data', (d) => {

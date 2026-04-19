@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: esi-scaffold
+appId: com.guyrandalf.esi
+productName: Esi
 directories:
   buildResources: build
 files:
@@ -19,12 +19,20 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  category: public.app-category.productivity
+  entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  identity: null
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    NSCameraUsageDescription: Esi uses the camera for vision-based commands.
+    NSMicrophoneUsageDescription: Esi listens for the wake word and voice commands.
+    NSCalendarsUsageDescription: Esi reads your Calendar to show today's agenda and upcoming events.
+    NSContactsUsageDescription: Esi reads Contacts to identify people you mention.
+    NSAppleEventsUsageDescription: Esi controls Calendar, Mail, and other apps on your behalf when you ask it to.
+    NSDocumentsFolderUsageDescription: Esi reads files when you reference them by path.
+    NSDownloadsFolderUsageDescription: Esi reads files in Downloads when you reference them.
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}

@@ -62,41 +62,66 @@ export function ActiveTask(): React.JSX.Element {
   }, [])
 
   return (
-    <ul className="space-y-2 text-[13.5px] uppercase tracking-widest font-mono">
-      {steps.map((s, i) => (
-        <li key={i} className="flex items-center gap-2.5">
-          <span
-            className={`inline-block w-2 h-2 rounded-full shrink-0 ${s.status === 'active' ? 'animate-pulse' : ''}`}
+    <ul
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11,
+        lineHeight: 1.45,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase'
+      }}
+    >
+      {steps.map((s, i) => {
+        const color =
+          s.status === 'done'
+            ? 'var(--color-esi-good)'
+            : s.status === 'active'
+              ? 'var(--color-esi-c-200)'
+              : 'transparent'
+        return (
+          <li
+            key={i}
             style={{
-              background:
-                s.status === 'done'
-                  ? 'var(--color-esi-green)'
-                  : s.status === 'active'
-                    ? 'var(--color-esi-cyan)'
-                    : 'transparent',
-              border:
-                s.status === 'pending'
-                  ? '1px solid rgba(0, 0, 0, 0.2)'
-                  : 'none',
-              boxShadow:
-                s.status !== 'pending'
-                  ? `0 0 6px ${s.status === 'done' ? 'var(--color-esi-green)' : 'var(--color-esi-cyan)'}`
-                  : 'none'
-            }}
-          />
-          <span
-            className="truncate"
-            style={{
-              color:
-                s.status === 'pending'
-                  ? 'var(--color-esi-muted)'
-                  : 'var(--color-esi-text)'
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10
             }}
           >
-            {s.label}
-          </span>
-        </li>
-      ))}
+            <span
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                marginTop: 4,
+                borderRadius: '50%',
+                flexShrink: 0,
+                background: color,
+                border:
+                  s.status === 'pending'
+                    ? '1px solid rgba(126,231,255,0.3)'
+                    : 'none',
+                boxShadow:
+                  s.status !== 'pending' ? `0 0 6px ${color}` : 'none',
+                animation: s.status === 'active' ? 'esi-pulse-glow 2s ease-in-out infinite' : undefined
+              }}
+            />
+            <span
+              style={{
+                color:
+                  s.status === 'pending'
+                    ? 'var(--color-esi-fg-dim)'
+                    : 'var(--color-esi-fg)',
+                wordBreak: 'break-word'
+              }}
+            >
+              {s.label}
+            </span>
+          </li>
+        )
+      })}
     </ul>
   )
 }

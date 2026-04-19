@@ -2,6 +2,8 @@ import { getUserFacingApp } from './system'
 import { getState as getCalendarState, CalendarEvent } from './calendar'
 import { getCached as getProject } from './project'
 import { snapshot as getMemory } from './memory'
+import { homedir, userInfo } from 'os'
+import * as imessage from './imessage'
 
 function formatTimeRange(e: CalendarEvent): string {
   if (e.allDay) return 'All day'
@@ -63,12 +65,27 @@ export function buildContext(): string {
   const lines: string[] = []
   lines.push(`Current date: ${dateStr}`)
   lines.push(`Current local time: ${timeStr} (${tz})`)
+  lines.push(`macOS user: ${userInfo().username} (home: ${homedir()})`)
+  lines.push(
+    'When you emit READ_FILE actions, ALWAYS use the real home path above — never "/Users/x/" or "/Users/user/" placeholders.'
+  )
 
   if (userApp.app) {
     const title = userApp.title ? ` — "${userApp.title}"` : ''
     lines.push(`Randalf's current app: ${userApp.app}${title}`)
   } else {
     lines.push(`Randalf's current app: unknown`)
+  }
+
+  // Cheap signal for proactive awareness. Doesn't quote message text
+  // (that would bloat the prompt); just a heads-up count.
+  try {
+    const unread = imessage.unreadCount()
+    if (unread != null && unread > 0) {
+      lines.push(`Unread iMessages/SMS: ${unread}`)
+    }
+  } catch {
+    /* noop */
   }
 
   if (proj) {

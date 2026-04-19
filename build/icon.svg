@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ESI app icon — 1024×1024. Arc reactor motif over deep-space
+  background, matching the in-app HUD. macOS will mask this into
+  its rounded-square Squircle automatically.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Deep navy radial background -->
+    <radialGradient id="bg" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#0a1b2e"/>
+      <stop offset="55%" stop-color="#030912"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+
+    <!-- Cyan glow for the core orb -->
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+      <stop offset="25%" stop-color="#e8fbff" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#7ee7ff" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#0a4d6b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Arc sweep gradient -->
+    <linearGradient id="arc" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#7ee7ff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#b8f1ff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#7ee7ff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Soft outer halo behind everything -->
+    <radialGradient id="halo" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#7ee7ff" stop-opacity="0.35"/>
+      <stop offset="70%" stop-color="#7ee7ff" stop-opacity="0"/>
+    </radialGradient>
+
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="14"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- macOS rounds the corners for us, but we paint a full square
+       so Retina mipmaps look clean. -->
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- Faint grid, very subtle for texture -->
+  <g stroke="#7ee7ff" stroke-opacity="0.05" stroke-width="1">
+    <g>
+      <line x1="0" y1="128" x2="1024" y2="128"/>
+      <line x1="0" y1="256" x2="1024" y2="256"/>
+      <line x1="0" y1="384" x2="1024" y2="384"/>
+      <line x1="0" y1="512" x2="1024" y2="512"/>
+      <line x1="0" y1="640" x2="1024" y2="640"/>
+      <line x1="0" y1="768" x2="1024" y2="768"/>
+      <line x1="0" y1="896" x2="1024" y2="896"/>
+    </g>
+    <g>
+      <line x1="128" y1="0" x2="128" y2="1024"/>
+      <line x1="256" y1="0" x2="256" y2="1024"/>
+      <line x1="384" y1="0" x2="384" y2="1024"/>
+      <line x1="512" y1="0" x2="512" y2="1024"/>
+      <line x1="640" y1="0" x2="640" y2="1024"/>
+      <line x1="768" y1="0" x2="768" y2="1024"/>
+      <line x1="896" y1="0" x2="896" y2="1024"/>
+    </g>
+  </g>
+
+  <!-- Outer halo -->
+  <circle cx="512" cy="512" r="480" fill="url(#halo)"/>
+
+  <g transform="translate(512 512)">
+    <!-- Ring 1: outermost with tick marks -->
+    <circle cx="0" cy="0" r="400" fill="none" stroke="#7ee7ff" stroke-opacity="0.18" stroke-width="2"/>
+    <g stroke="#7ee7ff" stroke-opacity="0.55">
+      <!-- 48 ticks around the circle -->
+      <g id="ticks">
+        <line x1="0" y1="-390" x2="0" y2="-410" stroke-width="3"/>
+      </g>
+      <use href="#ticks" transform="rotate(7.5)"/>
+      <use href="#ticks" transform="rotate(15)"/>
+      <use href="#ticks" transform="rotate(22.5)"/>
+      <use href="#ticks" transform="rotate(30)"/>
+      <use href="#ticks" transform="rotate(37.5)"/>
+      <use href="#ticks" transform="rotate(45)"/>
+      <use href="#ticks" transform="rotate(52.5)"/>
+      <use href="#ticks" transform="rotate(60)"/>
+      <use href="#ticks" transform="rotate(67.5)"/>
+      <use href="#ticks" transform="rotate(75)"/>
+      <use href="#ticks" transform="rotate(82.5)"/>
+      <use href="#ticks" transform="rotate(90)"/>
+      <use href="#ticks" transform="rotate(97.5)"/>
+      <use href="#ticks" transform="rotate(105)"/>
+      <use href="#ticks" transform="rotate(112.5)"/>
+      <use href="#ticks" transform="rotate(120)"/>
+      <use href="#ticks" transform="rotate(127.5)"/>
+      <use href="#ticks" transform="rotate(135)"/>
+      <use href="#ticks" transform="rotate(142.5)"/>
+      <use href="#ticks" transform="rotate(150)"/>
+      <use href="#ticks" transform="rotate(157.5)"/>
+      <use href="#ticks" transform="rotate(165)"/>
+      <use href="#ticks" transform="rotate(172.5)"/>
+      <use href="#ticks" transform="rotate(180)"/>
+      <use href="#ticks" transform="rotate(187.5)"/>
+      <use href="#ticks" transform="rotate(195)"/>
+      <use href="#ticks" transform="rotate(202.5)"/>
+      <use href="#ticks" transform="rotate(210)"/>
+      <use href="#ticks" transform="rotate(217.5)"/>
+      <use href="#ticks" transform="rotate(225)"/>
+      <use href="#ticks" transform="rotate(232.5)"/>
+      <use href="#ticks" transform="rotate(240)"/>
+      <use href="#ticks" transform="rotate(247.5)"/>
+      <use href="#ticks" transform="rotate(255)"/>
+      <use href="#ticks" transform="rotate(262.5)"/>
+      <use href="#ticks" transform="rotate(270)"/>
+      <use href="#ticks" transform="rotate(277.5)"/>
+      <use href="#ticks" transform="rotate(285)"/>
+      <use href="#ticks" transform="rotate(292.5)"/>
+      <use href="#ticks" transform="rotate(300)"/>
+      <use href="#ticks" transform="rotate(307.5)"/>
+      <use href="#ticks" transform="rotate(315)"/>
+      <use href="#ticks" transform="rotate(322.5)"/>
+      <use href="#ticks" transform="rotate(330)"/>
+      <use href="#ticks" transform="rotate(337.5)"/>
+      <use href="#ticks" transform="rotate(345)"/>
+      <use href="#ticks" transform="rotate(352.5)"/>
+    </g>
+
+    <!-- Ring 2: dashed, inner ring -->
+    <circle cx="0" cy="0" r="320" fill="none" stroke="#7ee7ff" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="16 24"/>
+
+    <!-- Ring 3: broken arcs — the signature sweep -->
+    <path d="M 260 0 A 260 260 0 0 1 -260 0" fill="none" stroke="url(#arc)" stroke-width="8" stroke-linecap="round"/>
+    <path d="M -260 0 A 260 260 0 0 1 230 -120" fill="none" stroke="#b8f1ff" stroke-opacity="0.7" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="260" cy="0" r="10" fill="#ffffff" filter="url(#glow)"/>
+
+    <!-- Ring 4: thin bright ring -->
+    <circle cx="0" cy="0" r="210" fill="none" stroke="#b8f1ff" stroke-opacity="0.65" stroke-width="2" stroke-dasharray="60 200"/>
+
+    <!-- Core orb -->
+    <circle cx="0" cy="0" r="180" fill="url(#core)" filter="url(#glow)"/>
+    <circle cx="0" cy="0" r="110" fill="none" stroke="#ffffff" stroke-opacity="0.85" stroke-width="3"/>
+    <circle cx="0" cy="0" r="64" fill="#ffffff" fill-opacity="0.95"/>
+
+    <!-- Crosshair reticle -->
+    <g stroke="#7ee7ff" stroke-opacity="0.5" stroke-width="2">
+      <line x1="-400" y1="0" x2="-340" y2="0"/>
+      <line x1="340"  y1="0" x2="400"  y2="0"/>
+      <line x1="0" y1="-400" x2="0" y2="-340"/>
+      <line x1="0" y1="340"  x2="0" y2="400"/>
+    </g>
+  </g>
+</svg>
