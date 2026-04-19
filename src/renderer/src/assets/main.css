@@ -1,31 +1,39 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-esi-bg: rgba(10, 14, 28, 0.88);
-  --color-esi-bg-solid: #0a0e1c;
-  --color-esi-panel: rgba(255, 255, 255, 0.05);
-  --color-esi-panel-hover: rgba(255, 255, 255, 0.08);
+  /* Cinematic HUD Surface Colors */
+  --color-esi-bg: rgba(5, 5, 15, 0.55);
+  --color-esi-panel: rgba(255, 255, 255, 0.04);
   --color-esi-border: rgba(255, 255, 255, 0.12);
-  --color-esi-border-strong: rgba(0, 212, 255, 0.22);
-  --color-esi-cyan: #22d3ee;
-  --color-esi-violet: #a78bfa;
-  --color-esi-green: #4ade80;
-  --color-esi-gold: #fbbf24;
-  --color-esi-red: #f87171;
-  --color-esi-text: #f1f5f9;
-  --color-esi-text-dim: #cbd5e1;
-  --color-esi-muted: #7a849a;
+  --color-esi-border-soft: rgba(255, 255, 255, 0.06);
+  --color-esi-border-strong: rgba(255, 255, 255, 0.2);
 
-  --font-display: 'Orbitron', sans-serif;
+  /* Text hierarchy */
+  --color-esi-text: #e8eaf0;
+  --color-esi-text-dim: rgba(232, 234, 240, 0.6);
+  --color-esi-muted: rgba(232, 234, 240, 0.4);
+
+  /* Accents */
+  --color-esi-cyan: #00d4ff;
+  --color-esi-violet: #7c6aff;
+  --color-esi-green: #4ade80;
+  --color-esi-gold: #f4c96a;
+  --color-esi-red: #f87171;
+
+  /* Aliases for older components if they still use them, though we'll update them */
+  --color-esi-primary: var(--color-esi-cyan);
+  --color-esi-success: var(--color-esi-green);
+  --color-esi-warning: var(--color-esi-gold);
+  --color-esi-critical: var(--color-esi-red);
+
   --font-mono: 'IBM Plex Mono', monospace;
+  --font-orbitron: 'Orbitron', sans-serif;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 html,
@@ -33,57 +41,49 @@ body,
 #root {
   width: 100vw;
   height: 100vh;
-  background: transparent !important;
+  background: var(--color-esi-bg);
   overflow: hidden;
   color: var(--color-esi-text);
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: 0.01em;
+}
+
+/* Prevent text selection on chrome but allow it where it counts */
+button,
+.drag-region {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 input,
-textarea {
+textarea,
+[data-selectable] {
   -webkit-user-select: text;
   user-select: text;
 }
 
-@keyframes scan {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100vh);
-  }
+/* macOS draggable region for frameless title bar */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.no-drag, .hud-panel {
+  -webkit-app-region: no-drag;
 }
 
-@keyframes pulse-glow {
-  0%,
-  100% {
-    opacity: 0.7;
-  }
-  50% {
-    opacity: 1;
-  }
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-
-.scanline {
-  position: fixed;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(0, 212, 255, 0.25),
-    transparent
-  );
-  animation: scan 8s linear infinite;
-  pointer-events: none;
-  z-index: 1;
+::-webkit-scrollbar-thumb {
+  background: var(--color-esi-border);
+  border-radius: 3px;
 }
-
-.pulse-dot {
-  animation: pulse-glow 1.6s ease-in-out infinite;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-esi-border-strong);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

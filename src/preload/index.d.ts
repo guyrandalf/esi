@@ -1,10 +1,20 @@
 declare global {
+  interface EsiLogEntry {
+    id: number
+    timestamp: string
+    command: string
+    response: string | null
+    duration_ms: number | null
+    app_context: string | null
+    ok: number
+  }
+
   interface Window {
     esi: {
       sendCommand: (text: string) => Promise<{ ok: boolean; response: string }>
-      toggleMode: () => Promise<'fullscreen' | 'sidebar'>
-      setInteractive: (interactive: boolean) => Promise<void>
-      onMode: (cb: (mode: 'fullscreen' | 'sidebar') => void) => () => void
+      getRecentLog: (limit?: number) => Promise<EsiLogEntry[]>
+      stopSpeaking: () => Promise<void>
+      onLogUpdated: (cb: () => void) => () => void
     }
   }
 }

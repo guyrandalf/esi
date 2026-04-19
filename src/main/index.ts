@@ -1,29 +1,20 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import { join } from 'path'
 import { electronApp, is } from '@electron-toolkit/utils'
+import * as ollama from './modules/ollama'
+import * as voice from './modules/voice'
+import { initLog, logCommand, getRecentLog, closeLog } from './modules/log'
 
 let mainWindow: BrowserWindow | null = null
-let hudMode: 'fullscreen' | 'sidebar' = 'fullscreen'
 
 function createWindow(): void {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
-
   mainWindow = new BrowserWindow({
-    width,
-    height,
-    x: 0,
-    y: 0,
-    show: false,
-    frame: false,
+    fullscreen: true,
     transparent: true,
-    resizable: false,
+    frame: false,
     hasShadow: false,
     alwaysOnTop: true,
-    skipTaskbar: true,
-    fullscreenable: false,
-    roundedCorners: false,
-    backgroundColor: '#00000000',
-    autoHideMenuBar: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -32,12 +23,12 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.setAlwaysOnTop(true, 'screen-saver')
-  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  // Set default state to ignore mouse events (allow click-through to apps underneath)
   mainWindow.setIgnoreMouseEvents(true, { forward: true })
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+    mainWindow?.focus()
   })
 
   mainWindow.on('closed', () => {
@@ -52,40 +43,56 @@ function createWindow(): void {
   }
 }
 
-function toggleMode(): 'fullscreen' | 'sidebar' {
-  if (!mainWindow) return hudMode
-  hudMode = hudMode === 'fullscreen' ? 'sidebar' : 'fullscreen'
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
-  if (hudMode === 'sidebar') {
-    const w = 340
-    mainWindow.setBounds({ x: width - w, y: 0, width: w, height })
-    mainWindow.setIgnoreMouseEvents(false)
-  } else {
-    mainWindow.setBounds({ x: 0, y: 0, width, height })
-    mainWindow.setIgnoreMouseEvents(true, { forward: true })
+async function handleCommand(
+  text: string
+): Promise<{ ok: boolean; response: string }> {
+  const start = Date.now()
+  const trimmed = text.trim()
+  if (!trimmed) return { ok: false, response: '' }
+
+  try {
+    const response = await ollama.ask(trimmed)
+    const duration = Date.now() - start
+    logCommand({ command: trimmed, response, duration_ms: duration, ok: true })
+    voice.speak(response)
+    mainWindow?.webContents.send('esi:log-updated')
+    return { ok: true, response }
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err)
+    const friendly =
+      errMsg.includes('fetch failed') || errMsg.includes('ECONNREFUSED')
+        ? "I can't reach Ollama. Is it running? Try `ollama serve` in a terminal."
+        : `Something went wrong: ${errMsg}`
+    logCommand({
+      command: trimmed,
+      response: friendly,
+      duration_ms: Date.now() - start,
+      ok: false
+    })
+    mainWindow?.webContents.send('esi:log-updated')
+    return { ok: false, response: friendly }
   }
-  mainWindow.webContents.send('esi:mode', hudMode)
-  return hudMode
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.esi')
+  initLog()
 
-  globalShortcut.register('CommandOrControl+Shift+E', () => {
-    toggleMode()
-  })
-  globalShortcut.register('CommandOrControl+Shift+Q', () => app.quit())
-
-  ipcMain.handle('esi:toggle-mode', () => toggleMode())
-
-  ipcMain.handle('esi:set-interactive', (_e, interactive: boolean) => {
-    if (!mainWindow || hudMode === 'sidebar') return
-    if (interactive) mainWindow.setIgnoreMouseEvents(false)
-    else mainWindow.setIgnoreMouseEvents(true, { forward: true })
+  ollama.isAvailable().then((ok) => {
+    if (!ok) {
+      console.warn(
+        '[esi] Ollama not reachable. Start it with `ollama serve` and `ollama pull llama3.1:8b`.'
+      )
+    }
   })
 
-  ipcMain.handle('esi:command', async (_e, text: string) => {
-    return { ok: true, response: `Echo (stub): ${text}` }
+  globalShortcut.register('CommandOrControl+Shift+.', () => voice.cancelSpeech())
+
+  ipcMain.handle('esi:command', (_e, text: string) => handleCommand(text))
+  ipcMain.handle('esi:get-log', (_e, limit?: number) => getRecentLog(limit ?? 10))
+  ipcMain.handle('esi:stop-speaking', () => voice.cancelSpeech())
+  ipcMain.on('esi:set-ignore-mouse', (_e, ignore: boolean) => {
+    mainWindow?.setIgnoreMouseEvents(ignore, { forward: true })
   })
 
   createWindow()
@@ -101,4 +108,6 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  voice.cancelSpeech()
+  closeLog()
 })

@@ -1,26 +1,26 @@
 import { PanelShell } from '../shared/PanelShell'
 
 const MOCK_MEMORY = [
-  { k: 'John', v: 'tech lead · Atulo' },
+  { k: 'John', v: 'tech lead at Atulo' },
   { k: 'Ewoma', v: 'birthday this week' },
-  { k: 'Atulo', v: 'PR #142 pending' },
-  { k: 'Standup', v: '9:00 daily' }
+  { k: 'Atulo', v: 'PR #142 pending review' },
+  { k: 'Standup', v: 'every day at 9:00' }
 ]
 
-export function MemoryPanel({ delay = 0 }: { delay?: number }): React.JSX.Element {
+export function MemoryPanel(): React.JSX.Element {
   return (
-    <PanelShell title="Memory" accent="violet" delay={delay}>
-      <ul className="space-y-2 text-[13px]">
-        {MOCK_MEMORY.map((m) => (
-          <li key={m.k} className="flex items-baseline gap-2">
-            <span style={{ color: 'var(--color-esi-violet)' }} className="min-w-[60px]">
-              {m.k}
-            </span>
-            <span style={{ color: 'var(--color-esi-muted)' }}>→</span>
-            <span style={{ color: 'var(--color-esi-text)' }}>{m.v}</span>
-          </li>
-        ))}
-      </ul>
-    </PanelShell>
+    <ul className="space-y-2 text-[12px] uppercase font-mono tracking-tight">
+      {MOCK_MEMORY.map((m) => (
+        <li key={m.k} className="flex items-baseline gap-2.5">
+          <span
+            className="font-bold min-w-[70px] shrink-0 tracking-widest"
+            style={{ color: 'var(--color-esi-violet)' }}
+          >
+            {m.k}
+          </span>
+          <span className="leading-snug" style={{ color: 'var(--color-esi-text-dim)' }}>{m.v}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
