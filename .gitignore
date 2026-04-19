@@ -1,0 +1,14 @@
+node_modules
+dist
+out
+.DS_Store
+.eslintcache
+*.log*
+
+# Environment — never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# Local tool config
+.claude/settings.local.json
