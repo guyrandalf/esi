@@ -38,27 +38,31 @@ export function InputBar({
   }
 
   const canSend = value.trim().length > 0 && !thinking
+  const borderColor = thinking ? 'var(--color-esi-gold)' : 'var(--color-esi-cyan)'
 
   return (
     <div
-      className="hud-panel shrink-0 rounded-lg border backdrop-blur-md transition-all flex flex-col justify-center px-4 py-3 pb-2"
+      className="hud-panel rounded-2xl"
       style={{
-        backgroundColor: 'var(--color-esi-panel)',
-        borderColor: thinking ? 'var(--color-esi-gold)' : 'var(--color-esi-cyan)',
-        boxShadow: `0 0 20px -5px ${thinking ? 'var(--color-esi-gold)' : 'var(--color-esi-cyan)'}44`
+        background: 'var(--color-esi-panel)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: `1.5px solid ${borderColor}`,
+        boxShadow: `0 8px 28px rgba(15, 18, 32, 0.08), 0 0 0 4px ${thinking ? 'rgba(180, 83, 9, 0.08)' : 'rgba(2, 132, 199, 0.08)'}`,
+        padding: '16px 20px'
       }}
-      onMouseEnter={() => {
-        window.esi?.setIgnoreMouse(false)
-      }}
-      onMouseLeave={() => {
-        window.esi?.setIgnoreMouse(true)
-      }}
+      onMouseEnter={() => window.esi?.setIgnoreMouse(false)}
+      onMouseLeave={() => window.esi?.setIgnoreMouse(true)}
     >
-      <form onSubmit={submit} className="flex flex-col gap-2">
-        <div className="flex items-start gap-4">
-          <span 
-            className="text-[18px] font-bold mt-[2px] pulse-dot" 
-            style={{ color: thinking ? 'var(--color-esi-gold)' : 'var(--color-esi-cyan)' }}
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+          <span
+            style={{
+              fontSize: '16px',
+              fontWeight: 700,
+              marginTop: '2px',
+              color: borderColor
+            }}
           >
             &gt;
           </span>
@@ -69,25 +73,43 @@ export function InputBar({
             onKeyDown={onKey}
             rows={1}
             disabled={thinking}
-            placeholder={thinking ? 'PROCESSING DIRECTIVE...' : 'AWAITING VOCAL OR KEYBOARD INPUT. . .'}
-            className="flex-1 bg-transparent outline-none text-[15px] font-mono tracking-widest resize-none leading-relaxed placeholder:text-[color:var(--color-esi-muted)] disabled:opacity-60 px-0 py-1"
-            style={{ color: 'var(--color-esi-text)', maxHeight: '180px', textTransform: 'uppercase' }}
+            placeholder={thinking ? 'Processing directive...' : 'Awaiting input...'}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              outline: 'none',
+              fontSize: '14px',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: '0.05em',
+              resize: 'none',
+              lineHeight: 1.6,
+              color: 'var(--color-esi-text)',
+              maxHeight: '180px',
+              border: 'none',
+              padding: 0
+            }}
           />
         </div>
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] tracking-widest uppercase flex items-center gap-4" style={{ color: 'var(--color-esi-muted)' }}>
-            <span><kbd className="text-white/60">ENTER</kbd> TO EXECUTE</span>
-            <span><kbd className="text-white/60">⇧ ENTER</kbd> MULTI-LINE</span>
-            <span><kbd className="text-white/60">⌘ ⇧ .</kbd> HALT SPEECH</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-esi-muted)' }}>
+            <span>Enter to execute</span>
+            <span style={{ marginLeft: '12px' }}>⇧ Enter multi-line</span>
           </div>
           <button
             type="submit"
             disabled={!canSend}
-            className="rounded px-4 py-1 text-[11px] font-bold tracking-widest uppercase transition-colors disabled:opacity-50"
             style={{
-              background: canSend ? 'rgba(0, 212, 255, 0.15)' : 'transparent',
-              color: canSend ? 'var(--color-esi-cyan)' : 'var(--color-esi-muted)',
-              border: `1px solid ${canSend ? 'var(--color-esi-cyan)' : 'transparent'}`
+              borderRadius: '8px',
+              padding: '5px 14px',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              cursor: canSend ? 'pointer' : 'default',
+              opacity: canSend ? 1 : 0.4,
+              background: canSend ? 'var(--color-esi-cyan)' : 'transparent',
+              color: canSend ? '#ffffff' : 'var(--color-esi-muted)',
+              border: canSend ? 'none' : '1px solid var(--color-esi-panel-border)'
             }}
           >
             Execute

@@ -16,67 +16,50 @@ export function PanelShell({
   glowColor = 'cyan',
   delay = 0
 }: PanelShellProps): React.JSX.Element {
-  const colorMap = {
+  const colorMap: Record<string, string> = {
     cyan: 'var(--color-esi-cyan)',
     violet: 'var(--color-esi-violet)',
     green: 'var(--color-esi-green)',
     gold: 'var(--color-esi-gold)',
     red: 'var(--color-esi-red)'
   }
-
-  const borderGlow = colorMap[glowColor]
+  const accent = colorMap[glowColor] ?? colorMap.cyan
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
-      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      transition={{ duration: 0.5, delay, ease: 'easeOut' }}
-      className={`hud-panel relative flex flex-col backdrop-blur-md rounded-lg overflow-hidden border ${className}`}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay, ease: 'circOut' }}
+      className={`hud-panel relative flex flex-col pointer-events-auto rounded-2xl ${className}`}
       style={{
-        backgroundColor: 'var(--color-esi-panel)',
-        borderColor: 'var(--color-esi-border-soft)',
-        boxShadow: `0 0 15px -5px ${borderGlow}33`
+        background: 'var(--color-esi-panel)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: '1px solid var(--color-esi-panel-border)',
+        boxShadow: '0 4px 20px rgba(15, 18, 32, 0.06)'
       }}
-      onMouseEnter={() => {
-        window.esi?.setIgnoreMouse(false)
-      }}
-      onMouseLeave={() => {
-        window.esi?.setIgnoreMouse(true)
-      }}
+      onMouseEnter={() => window.esi?.setIgnoreMouse(false)}
+      onMouseLeave={() => window.esi?.setIgnoreMouse(true)}
     >
-      {/* HUD Panel Header */}
-      <div 
-        className="h-8 flex items-center px-4 shrink-0 border-b"
-        style={{ 
-          borderColor: 'var(--color-esi-border-soft)',
-          background: `linear-gradient(90deg, ${borderGlow}22 0%, transparent 100%)`
-        }}
-      >
-        <div className="flex items-center gap-2">
-          {/* Decorative scanner line */}
-          <div 
-            className="w-1 h-3 rounded-full"
-            style={{ backgroundColor: borderGlow, boxShadow: `0 0 8px ${borderGlow}` }}
-          />
-          <span 
-            className="uppercase tracking-[0.15em] text-[11px] font-bold opacity-90"
-            style={{ fontFamily: 'var(--font-orbitron)', color: borderGlow }}
-          >
-            {title}
-          </span>
-        </div>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 pt-4 pb-2 shrink-0">
+        <div className="w-1 h-4 rounded-full" style={{ backgroundColor: accent }} />
+        <span
+          className="uppercase tracking-[0.2em] text-[11px] font-bold"
+          style={{ fontFamily: 'var(--font-orbitron)', color: accent }}
+        >
+          {title}
+        </span>
+        <div
+          className="flex-1 h-px opacity-30"
+          style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
+        />
       </div>
-      
-      {/* Panel Inner Content */}
-      <div className="flex-1 overflow-auto p-4 custom-scrollbar">
+
+      {/* Content */}
+      <div className="flex-1 min-h-0 overflow-auto px-5 pb-5 custom-scrollbar">
         {children}
       </div>
-      
-      {/* Decorative corners */}
-      <div className="absolute top-0 left-0 w-2 h-2 border-t border-l" style={{ borderColor: borderGlow }} />
-      <div className="absolute top-0 right-0 w-2 h-2 border-t border-r" style={{ borderColor: borderGlow }} />
-      <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l" style={{ borderColor: borderGlow }} />
-      <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r" style={{ borderColor: borderGlow }} />
     </motion.div>
   )
 }

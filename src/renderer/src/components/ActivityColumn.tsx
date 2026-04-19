@@ -11,7 +11,7 @@ function formatTime(iso: string): string {
   })
 }
 
-function truncate(s: string, n = 68): string {
+function truncate(s: string, n = 80): string {
   return s.length > n ? s.slice(0, n - 1) + '…' : s
 }
 
@@ -25,50 +25,67 @@ export function ActivityColumn(): React.JSX.Element {
 
   useEffect(() => {
     refresh()
-    const off = window.esi?.onLogUpdated(() => {
-      refresh()
-    })
+    const off = window.esi?.onLogUpdated(() => refresh())
     return () => off?.()
   }, [])
 
   return (
     <PanelShell title="System Activity & Logs" glowColor="cyan" className="flex-1 min-h-0" delay={0.2}>
       {entries.length === 0 ? (
-        <p className="text-[13px] px-1 leading-relaxed" style={{ color: 'var(--color-esi-muted)' }}>
-          [NO HISTORICAL DATA FOUND]
+        <p style={{ fontSize: '12px', opacity: 0.4, fontFamily: 'var(--font-mono)' }}>
+          No activity recorded yet.
         </p>
       ) : (
-        <ul className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {entries.map((e) => (
-            <li key={e.id} className="group cursor-default flex flex-col gap-1.5 border-b pb-3" style={{ borderColor: 'var(--color-esi-border-soft)' }}>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 border rounded-sm" style={{ 
-                  color: e.ok ? 'var(--color-esi-green)' : 'var(--color-esi-red)',
-                  borderColor: e.ok ? 'rgba(74, 222, 128, 0.2)' : 'rgba(248, 113, 113, 0.2)',
-                  backgroundColor: e.ok ? 'rgba(74, 222, 128, 0.05)' : 'rgba(248, 113, 113, 0.05)'
-                }}>
+            <div
+              key={e.id}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                borderBottom: '1px solid var(--color-esi-panel-border)',
+                paddingBottom: '12px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    color: e.ok ? 'var(--color-esi-green)' : 'var(--color-esi-red)',
+                    background: e.ok ? 'rgba(74, 222, 128, 0.1)' : 'rgba(248, 113, 113, 0.1)'
+                  }}
+                >
                   {e.ok ? 'OK' : 'ERR'}
                 </span>
-                <span className="tabular-nums text-[11px]" style={{ color: 'var(--color-esi-cyan)' }}>
-                  [{formatTime(e.timestamp)}]
+                <span style={{ fontSize: '10px', opacity: 0.4, fontVariantNumeric: 'tabular-nums' }}>
+                  {formatTime(e.timestamp)}
                 </span>
                 {e.duration_ms && (
-                  <span className="tabular-nums text-[11px]" style={{ color: 'var(--color-esi-muted)' }}>
+                  <span style={{ fontSize: '10px', opacity: 0.25, fontVariantNumeric: 'tabular-nums' }}>
                     {e.duration_ms}ms
                   </span>
                 )}
               </div>
-              <div className="text-[13px] leading-snug pl-1 font-mono tracking-tight" style={{ color: 'var(--color-esi-text-dim)' }} data-selectable>
+              <div
+                style={{ fontSize: '12px', lineHeight: 1.5, fontFamily: 'var(--font-mono)', color: 'var(--color-esi-text-dim)' }}
+                data-selectable
+              >
                 &gt; {truncate(e.command)}
               </div>
               {e.response && (
-                <div className="text-[12px] leading-snug pl-1 line-clamp-2" style={{ color: 'var(--color-esi-muted)' }}>
-                  {truncate(e.response, 100)}
+                <div style={{ fontSize: '11px', lineHeight: 1.4, opacity: 0.45, fontFamily: 'var(--font-mono)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {truncate(e.response, 120)}
                 </div>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </PanelShell>
   )

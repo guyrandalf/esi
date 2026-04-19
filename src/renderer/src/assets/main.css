@@ -1,26 +1,26 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Cinematic HUD Surface Colors */
-  --color-esi-bg: rgba(5, 5, 15, 0.55);
-  --color-esi-panel: rgba(255, 255, 255, 0.04);
-  --color-esi-border: rgba(255, 255, 255, 0.12);
-  --color-esi-border-soft: rgba(255, 255, 255, 0.06);
-  --color-esi-border-strong: rgba(255, 255, 255, 0.2);
+  /* Surface — light cinematic, off-white with a hint of blue */
+  --color-esi-bg: #f3f5fa;
+  --color-esi-bg-solid: #ffffff;
+  --color-esi-panel: rgba(255, 255, 255, 0.82);
+  --color-esi-panel-border: rgba(15, 18, 32, 0.08);
+  --color-esi-panel-inset: rgba(15, 18, 32, 0.04);
 
-  /* Text hierarchy */
-  --color-esi-text: #e8eaf0;
-  --color-esi-text-dim: rgba(232, 234, 240, 0.6);
-  --color-esi-muted: rgba(232, 234, 240, 0.4);
+  /* Text — rich near-black primary, grays for hierarchy */
+  --color-esi-text: #0f1220;
+  --color-esi-text-dim: #4a5063;
+  --color-esi-muted: #8a90a0;
 
-  /* Accents */
-  --color-esi-cyan: #00d4ff;
-  --color-esi-violet: #7c6aff;
-  --color-esi-green: #4ade80;
-  --color-esi-gold: #f4c96a;
-  --color-esi-red: #f87171;
+  /* Accents — deeper so they stay punchy on a light canvas */
+  --color-esi-cyan: #0284c7;
+  --color-esi-violet: #7c3aed;
+  --color-esi-green: #059669;
+  --color-esi-gold: #b45309;
+  --color-esi-red: #dc2626;
 
-  /* Aliases for older components if they still use them, though we'll update them */
+  /* Semantic aliases */
   --color-esi-primary: var(--color-esi-cyan);
   --color-esi-success: var(--color-esi-green);
   --color-esi-warning: var(--color-esi-gold);
@@ -50,7 +50,6 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
-/* Prevent text selection on chrome but allow it where it counts */
 button,
 .drag-region {
   -webkit-user-select: none;
@@ -64,25 +63,24 @@ textarea,
   user-select: text;
 }
 
-/* macOS draggable region for frameless title bar */
 .drag-region {
   -webkit-app-region: drag;
 }
-.no-drag, .hud-panel {
+.no-drag,
+.hud-panel {
   -webkit-app-region: no-drag;
 }
 
-/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-esi-border);
+  background: rgba(15, 18, 32, 0.14);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-esi-border-strong);
+  background: rgba(15, 18, 32, 0.28);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
