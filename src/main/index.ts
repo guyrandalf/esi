@@ -531,28 +531,40 @@ app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.guyrandalf.esi')
   db.init()
 
-  // Seed a user-owned .env on first run of a packaged build. Users can
-  // edit ~/Library/Application Support/ESI/.env to change voice, keys,
-  // wake mode, etc. without rebuilding the app.
-  if (app.isPackaged && !existsSync(USER_ENV_PATH)) {
+  // Ensure the user's config directory exists; DO NOT overwrite an
+  // existing .env with the empty template (that silently wiped the user's
+  // GEMINI_API_KEY in a prior version). If the file is missing, we leave
+  // it for the user to create — the app falls back to defaults and shows
+  // the missing subsystem in diagnostics.
+  if (app.isPackaged) {
     try {
       mkdirSync(join(homedir(), 'Library', 'Application Support', 'Esi'), {
         recursive: true
       })
-      // Resources are asarUnpacked, so env.template lives one level deeper.
-      const bundledTemplate = [
-        join(process.resourcesPath, 'app.asar.unpacked', 'resources', 'env.template'),
-        join(process.resourcesPath, 'env.template')
-      ].find((p) => existsSync(p))
-      if (bundledTemplate) {
-        copyFileSync(bundledTemplate, USER_ENV_PATH)
-        console.log(`[esi] seeded user .env at ${USER_ENV_PATH}`)
-        loadEnv({ path: USER_ENV_PATH })
+      if (!existsSync(USER_ENV_PATH)) {
+        const bundledTemplate = [
+          join(
+            process.resourcesPath,
+            'app.asar.unpacked',
+            'resources',
+            'env.template'
+          ),
+          join(process.resourcesPath, 'env.template')
+        ].find((p) => existsSync(p))
+        if (bundledTemplate) {
+          copyFileSync(bundledTemplate, USER_ENV_PATH)
+          console.log(
+            `[esi] seeded empty user .env at ${USER_ENV_PATH} — user must fill in keys to enable Gemini / Picovoice`
+          )
+          loadEnv({ path: USER_ENV_PATH })
+        }
       } else {
-        console.warn('[esi] no env.template bundled — user will need to create .env manually')
+        console.log(
+          `[esi] user .env already present at ${USER_ENV_PATH} — not overwriting`
+        )
       }
     } catch (err) {
-      console.warn('[esi] could not seed user .env:', err)
+      console.warn('[esi] could not prepare user .env dir:', err)
     }
   }
 

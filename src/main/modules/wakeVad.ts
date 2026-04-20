@@ -42,19 +42,22 @@ const CHECK_COOLDOWN_MS = 2000 // min gap between whisper invocations
 //
 // And then 3 such events, each separated by a REQUIRED pause (silence
 // frames between them) — not just 3 events in a window.
-const CLAP_PEAK_THRESHOLD = 10000 // int16 — claps peak high; speech rarely exceeds ~10k
-// Claps are instantaneous impulses — in a 32ms frame the impulse is averaged
-// with surrounding silence. Real-world clap frame crest factor is ~2-3;
-// setting this too high (I had 4.0) rejected all real claps from the test logs.
-const CLAP_CREST_MIN = 2.2
+// Lowered to catch the quieter "second clap" of a rapid pair — real-world
+// data shows users hit their first clap harder than their second by
+// ~20-30%, so if the first passes at 12k the second often lands at 8-9k.
+const CLAP_PEAK_THRESHOLD = 8000
+// Crest filter removed — was rejecting legitimate claps; attack + peak +
+// rhythm-window are already sufficient to reject speech.
+const CLAP_CREST_MIN = 1.8
 const CLAP_ATTACK_QUIET_FRAMES = 2 // two preceding frames must be quiet
 const CLAP_MIN_SILENCE_AFTER_FRAMES = 2 // 2 frames (~64ms) of quiet between claps
-const CLAP_MIN_GAP_MS = 180 // refractory
-// Widened significantly — real-world clap-clap-clap rhythm is 800-1400ms
-// between beats, not the 900 I had. A 3-clap burst fits in ~4.5s.
-const CLAP_MAX_GAP_MS = 1500
+const CLAP_MIN_GAP_MS = 120 // refractory
+// Double-clap trigger: two sharp claps within 600ms. Real-world data shows
+// users naturally do clap-clap pairs in ~300-500ms — 600ms is comfortable.
+// Ambient household noise rarely produces two 10k+ peaks that close together.
+const CLAP_MAX_GAP_MS = 600
 const CLAP_QUIET_RMS = 400 // what we consider "quiet"
-const CLAPS_REQUIRED = 3
+const CLAPS_REQUIRED = 2
 
 // Accept common mishearings. Whisper-tiny in particular likes to spell "ESI"
 // as "SE", "Essie", "easy", etc., so we cast a wide net for the wake syllable.
@@ -235,6 +238,10 @@ async function pump(): Promise<void> {
         lastCheckAt = now
         // Snapshot and kick off whisper check — don't block the pump.
         const snapshot = transcribeBuffer.slice()
+        const secs = (snapshot.length * FRAME_LENGTH) / SAMPLE_RATE
+        console.log(
+          `[esi] wakeVad: detected ${secs.toFixed(1)}s of speech, running whisper…`
+        )
         checkWake(snapshot).catch((err) =>
           console.warn('[esi] wakeVad transcribe failed:', err)
         )
@@ -266,6 +273,7 @@ async function checkWake(frames: Int16Array[]): Promise<void> {
   }
   if (!text) return
   const clean = text.trim().toLowerCase()
+  console.log(`[esi] wakeVad: whisper heard "${clean.slice(0, 80)}"`)
   if (clean.length < 2) return
   for (const p of WAKE_PATTERNS) {
     if (p.test(clean)) {
@@ -273,6 +281,7 @@ async function checkWake(frames: Int16Array[]): Promise<void> {
       return
     }
   }
+  console.log(`[esi] wakeVad: no wake pattern matched in "${clean.slice(0, 80)}"`)
 }
 
 function fireWake(reason: string): void {
