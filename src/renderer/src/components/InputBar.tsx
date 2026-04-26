@@ -128,7 +128,7 @@ export function InputBar({
                 ? 'Transcribing…'
                 : thinking
                   ? 'Processing directive…'
-                  : 'Address E.S.I…'
+                  : 'Address Queen Esi…'
           }
           style={{
             flex: 1,

@@ -173,14 +173,14 @@ export function SettingsModal({
                 onChange={(e) => handleAutostartToggle(e.target.checked)}
               />
               <span style={{ color: 'var(--color-esi-text)' }}>
-                Start ESI at login
+                Start Queen Esi at login
               </span>
               <span
                 className="text-[11px]"
                 style={{ color: 'var(--color-esi-muted)' }}
               >
                 {autostart?.supported
-                  ? '(menu-bar only; summon with "hey ESI" or 3 claps)'
+                  ? '(menu-bar only; summon with "hey Esi", "Esi", or "Queen Esi")'
                   : '(available in the packaged build)'}
               </span>
             </label>

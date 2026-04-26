@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 const LINES: Array<{ t: number; line: string }> = [
-  { t: 0, line: 'INITIATING E.S.I. KERNEL v1.0.0' },
+  { t: 0, line: 'INITIATING QUEEN ESI KERNEL v1.0.0' },
   { t: 120, line: 'Loading neural matrix................ [ OK ]' },
   { t: 260, line: 'Mounting semantic memory store....... [ OK ]' },
   { t: 400, line: 'Wiring Claude bridge................. [ OK ]' },

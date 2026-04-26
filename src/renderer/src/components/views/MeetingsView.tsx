@@ -76,9 +76,9 @@ export function MeetingsView(): React.JSX.Element {
             <div style={{ color: 'var(--color-esi-c-100)', marginBottom: 6 }}>
               READY TO CAPTURE
             </div>
-            When you join a meeting (Zoom, Google Meet, FaceTime, Teams), ESI
-            auto-detects it and begins transcribing via Whisper. Transcripts
-            and auto-summary appear here live.
+            When you join a meeting (Zoom, Google Meet, FaceTime, Teams),
+            Queen Esi auto-detects it and begins transcribing via Whisper.
+            Transcripts and auto-summary appear here live.
           </div>
         )}
 

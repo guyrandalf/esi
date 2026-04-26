@@ -87,7 +87,7 @@ export function ConversationView({
       <div className="panel-head">
         <span>
           <span className="dot" />
-          CONVERSATION · E.S.I
+          CONVERSATION · QUEEN ESI
         </span>
         <span className="mono" style={{ fontSize: 9, color: 'var(--color-esi-good)' }}>
           CLAUDE · READY
@@ -208,7 +208,7 @@ function MessageBubble({ message }: { message: Message }): React.JSX.Element {
           gap: 8
         }}
       >
-        <span>{isUser ? 'SIR' : 'E.S.I'}</span>
+        <span>{isUser ? 'SIR' : 'QUEEN ESI'}</span>
         <span>·</span>
         <span>{message.time}</span>
       </div>
@@ -249,7 +249,7 @@ function ThinkingBubble(): React.JSX.Element {
           letterSpacing: '0.15em'
         }}
       >
-        E.S.I · PROCESSING
+        QUEEN ESI · PROCESSING
       </div>
       <div
         style={{

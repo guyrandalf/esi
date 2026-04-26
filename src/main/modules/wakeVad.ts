@@ -23,48 +23,41 @@ const SAMPLE_RATE = 16000
 const FRAME_LENGTH = 512
 const FRAMES_PER_SEC = SAMPLE_RATE / FRAME_LENGTH
 
-const SPEECH_RMS_THRESHOLD = 520
-const SPEECH_FRAMES_TO_TRIGGER = Math.ceil(FRAMES_PER_SEC * 0.35) // 350ms
-const TRANSCRIBE_WINDOW_SEC = 2
+// Built-in MacBook mics baseline ~20 RMS in a quiet room and peak 8-15k on
+// loud bursts, but sustained *speech* rarely crosses ~500 at conversational
+// volume without leaning into the mic. 300 catches normal speaking voice
+// from across a desk; 250ms of it is enough to be a word, not a cough.
+const SPEECH_RMS_THRESHOLD = 300
+// Start an utterance after 250ms of sustained speech…
+const SPEECH_FRAMES_TO_TRIGGER = Math.ceil(FRAMES_PER_SEC * 0.25)
+// …and end it after 400ms of trailing silence. This lets whisper see the
+// *full* phrase ("hey esi", "queen esi") instead of just the first 250ms —
+// which is why transcripts previously came back as "hey!" or "queenie".
+const END_OF_UTTERANCE_FRAMES = Math.ceil(FRAMES_PER_SEC * 0.4)
+// Rolling buffer length. Pre-roll context helps whisper catch the opening
+// consonant; 3s is plenty for a wake phrase.
+const UTTERANCE_BUFFER_SEC = 3
 const CHECK_COOLDOWN_MS = 2000 // min gap between whisper invocations
 
-// Clap detection — tuned to reject speech.
-//
-// Why the previous tuning kept false-triggering: speech peaks routinely hit
-// ~8000-12000 int16 and we get a new word every ~300ms, so three "loud
-// frames" within 2.1s is trivially easy to hit while talking. We now require
-// all of these to trigger a clap:
-//
-//   1. High absolute peak (a clap is genuinely louder than most speech)
-//   2. High CREST FACTOR (peak / rms > 4) — claps are impulses, speech isn't
-//   3. Preceded by quiet frames (attack detection) so sustained loudness
-//      like laughter or a shout doesn't count.
-//
-// And then 3 such events, each separated by a REQUIRED pause (silence
-// frames between them) — not just 3 events in a window.
-// Lowered to catch the quieter "second clap" of a rapid pair — real-world
-// data shows users hit their first clap harder than their second by
-// ~20-30%, so if the first passes at 12k the second often lands at 8-9k.
-const CLAP_PEAK_THRESHOLD = 8000
-// Crest filter removed — was rejecting legitimate claps; attack + peak +
-// rhythm-window are already sufficient to reject speech.
-const CLAP_CREST_MIN = 1.8
-const CLAP_ATTACK_QUIET_FRAMES = 2 // two preceding frames must be quiet
-const CLAP_MIN_SILENCE_AFTER_FRAMES = 2 // 2 frames (~64ms) of quiet between claps
-const CLAP_MIN_GAP_MS = 120 // refractory
-// Double-clap trigger: two sharp claps within 600ms. Real-world data shows
-// users naturally do clap-clap pairs in ~300-500ms — 600ms is comfortable.
-// Ambient household noise rarely produces two 10k+ peaks that close together.
-const CLAP_MAX_GAP_MS = 600
-const CLAP_QUIET_RMS = 400 // what we consider "quiet"
-const CLAPS_REQUIRED = 2
-
-// Accept common mishearings. Whisper-tiny in particular likes to spell "ESI"
-// as "SE", "Essie", "easy", etc., so we cast a wide net for the wake syllable.
+// Accept common mishearings. Whisper-tiny in particular likes to spell "Esi"
+// as "SE", "Essie", "easy", "queenie" (when preceded by "queen"), etc., so
+// we cast a wide net. Also accepts the full product name "Queen Esi", the
+// shorthand "queen", and contractions whisper produces for the two
+// together ("queenie" / "queeny" / "kweeni").
+const ESI_VARIANTS = '(?:esi|essie|easy|s\\.?e\\.?i\\.?|eesee|ee\\s*see|esy|esmay|ahsie|ehsie)'
+const QUEEN_ESI_CONTRACTIONS = '(?:queenie|queeny|kweeni|kweenie|kweeny)'
 const WAKE_PATTERNS: RegExp[] = [
-  /\b(?:hey|yo|hi|ok|okay)\s+(?:esi|essie|easy|s\.?e\.?i\.?|eesee|ee\s*see|esy|esmay)\b/i,
-  /\b(?:esi|essie|easy|s\.?e\.?i\.?|ee\s*see|esy)\b\s*[,.!?]/i,
-  /^\s*(?:esi|essie|easy|s\.?e\.?i\.?|eesee|ee\s*see|esy)\b/i
+  // "queenie" / "queeny" — whisper's typical contraction of "queen esi"
+  new RegExp(`\\b${QUEEN_ESI_CONTRACTIONS}\\b`, 'i'),
+  // "hey Esi", "yo Esi", "hey queen Esi", "hey queen"
+  new RegExp(`\\b(?:hey|yo|hi|ok|okay)\\s+(?:queen\\s+)?${ESI_VARIANTS}\\b`, 'i'),
+  new RegExp(`\\b(?:hey|yo|hi|ok|okay)\\s+(?:queen|${QUEEN_ESI_CONTRACTIONS})\\b`, 'i'),
+  // "queen Esi, …"
+  new RegExp(`\\bqueen\\s+${ESI_VARIANTS}\\b`, 'i'),
+  // Bare "Esi," / "Esi!" — address form
+  new RegExp(`\\b${ESI_VARIANTS}\\b\\s*[,.!?]`, 'i'),
+  // Sentence-initial "Esi …"
+  new RegExp(`^\\s*${ESI_VARIANTS}\\b`, 'i')
 ]
 
 let recorder: PvRecorder | null = null
@@ -75,13 +68,9 @@ let onLevel: ((rms0to1: number) => void) | null = null
 let lastCheckAt = 0
 let speechFrameCount = 0
 let transcribeBuffer: Int16Array[] = []
+let pendingUtterance = false
+let trailingSilenceFrames = 0
 let isMeetingActive: () => boolean = () => false
-
-// Clap state
-let lastClapAt = 0
-let clapStreak: number[] = [] // timestamps of recent claps
-let framesSinceClap = 0
-let recentQuietFrames = 0 // rolling count of consecutive quiet frames
 
 export function isRunning(): boolean {
   return running
@@ -176,6 +165,8 @@ export function stop(): void {
   recorder = null
   speechFrameCount = 0
   transcribeBuffer = []
+  pendingUtterance = false
+  trailingSilenceFrames = 0
   if (diagnosticTimer) {
     clearInterval(diagnosticTimer)
     diagnosticTimer = null
@@ -206,21 +197,21 @@ async function pump(): Promise<void> {
       }
     }
 
+    // Always push to the rolling buffer so we retain pre-speech context
+    // (the opening consonant of "hey" / "queen" often lands in the frame
+    // right before the VAD trips).
+    const maxFrames = Math.ceil(FRAMES_PER_SEC * UTTERANCE_BUFFER_SEC)
+    transcribeBuffer.push(frame)
+    if (transcribeBuffer.length > maxFrames) transcribeBuffer.shift()
+
     // If the user is manually recording a command, the hotkey capture owns
     // the mic semantics — don't trip on their own speech.
     if (voiceInputCapturing()) continue
-    // Muted or inside a meeting: discard audio entirely.
+    // Muted or inside a meeting: discard state entirely.
     if (muted || isMeetingActive()) {
       speechFrameCount = 0
-      transcribeBuffer = []
-      clapStreak = []
-      continue
-    }
-
-    // Clap trigger — checked before speech so a sharp loud transient
-    // doesn't get swallowed by the whisper path.
-    if (detectClap(peak, level)) {
-      fireWake('three-clap')
+      pendingUtterance = false
+      trailingSilenceFrames = 0
       continue
     }
 
@@ -228,28 +219,33 @@ async function pump(): Promise<void> {
 
     if (speaking) {
       speechFrameCount++
-      transcribeBuffer.push(frame)
-      const maxFrames = Math.ceil(FRAMES_PER_SEC * TRANSCRIBE_WINDOW_SEC)
-      while (transcribeBuffer.length > maxFrames) transcribeBuffer.shift()
-
+      trailingSilenceFrames = 0
       if (speechFrameCount >= SPEECH_FRAMES_TO_TRIGGER) {
-        const now = Date.now()
-        if (now - lastCheckAt < CHECK_COOLDOWN_MS) continue
-        lastCheckAt = now
-        // Snapshot and kick off whisper check — don't block the pump.
-        const snapshot = transcribeBuffer.slice()
-        const secs = (snapshot.length * FRAME_LENGTH) / SAMPLE_RATE
-        console.log(
-          `[esi] wakeVad: detected ${secs.toFixed(1)}s of speech, running whisper…`
-        )
-        checkWake(snapshot).catch((err) =>
-          console.warn('[esi] wakeVad transcribe failed:', err)
-        )
-        speechFrameCount = 0
+        pendingUtterance = true
       }
     } else {
       speechFrameCount = Math.max(0, speechFrameCount - 1)
-      if (speechFrameCount === 0) transcribeBuffer = []
+      if (pendingUtterance) {
+        trailingSilenceFrames++
+        if (trailingSilenceFrames >= END_OF_UTTERANCE_FRAMES) {
+          // Utterance ended. Hand the full rolling buffer to whisper.
+          const now = Date.now()
+          if (now - lastCheckAt >= CHECK_COOLDOWN_MS) {
+            lastCheckAt = now
+            const snapshot = transcribeBuffer.slice()
+            const secs = (snapshot.length * FRAME_LENGTH) / SAMPLE_RATE
+            console.log(
+              `[esi] wakeVad: utterance ended, running whisper on ${secs.toFixed(1)}s…`
+            )
+            checkWake(snapshot).catch((err) =>
+              console.warn('[esi] wakeVad transcribe failed:', err)
+            )
+          }
+          pendingUtterance = false
+          trailingSilenceFrames = 0
+          speechFrameCount = 0
+        }
+      }
     }
   }
 }
@@ -286,7 +282,6 @@ async function checkWake(frames: Int16Array[]): Promise<void> {
 
 function fireWake(reason: string): void {
   console.log(`[esi] wakeVad triggered: ${reason}`)
-  clapStreak = [] // reset after successful trigger
   const cb = onWake
   if (cb) {
     try {
@@ -295,87 +290,6 @@ function fireWake(reason: string): void {
       console.warn('[esi] wake callback threw:', err)
     }
   }
-}
-
-/**
- * Frame-level clap detector tuned to reject speech.
- *
- * A clap must:
- *  - Peak above {@link CLAP_PEAK_THRESHOLD}
- *  - Have a high crest factor (peak/rms) — an impulse, not sustained sound
- *  - Follow at least {@link CLAP_ATTACK_QUIET_FRAMES} quiet frames
- *    (sharp attack)
- *  - Be separated from the next clap by another quiet gap
- *
- * Three such events within {@link CLAP_MAX_GAP_MS} of each other → fire.
- */
-function detectClap(peak: number, rmsLevel: number): boolean {
-  // Track quiet frames for attack detection
-  const isQuiet = rmsLevel < CLAP_QUIET_RMS
-  if (isQuiet) {
-    recentQuietFrames = Math.min(10, recentQuietFrames + 1)
-    framesSinceClap++
-    return false
-  }
-
-  // Peak must be large and the frame must be impulsive (high crest)
-  const crest = rmsLevel > 0 ? peak / rmsLevel : 0
-  if (peak < CLAP_PEAK_THRESHOLD || crest < CLAP_CREST_MIN) {
-    if (peak > 6000) {
-      // Loud enough to be interesting — log why we rejected it
-      console.log(
-        `[esi] wakeVad clap rejected (filter): peak=${peak} rms=${rmsLevel.toFixed(0)} crest=${crest.toFixed(2)} (need peak>=${CLAP_PEAK_THRESHOLD}, crest>=${CLAP_CREST_MIN})`
-      )
-    }
-    recentQuietFrames = 0
-    framesSinceClap++
-    return false
-  }
-
-  // Attack: preceding frames must have been quiet (not mid-sentence)
-  if (recentQuietFrames < CLAP_ATTACK_QUIET_FRAMES) {
-    console.log(
-      `[esi] wakeVad clap rejected (no attack): peak=${peak}, quietFramesBefore=${recentQuietFrames}/${CLAP_ATTACK_QUIET_FRAMES}`
-    )
-    recentQuietFrames = 0
-    return false
-  }
-
-  // Inter-clap: require silence between claps (not continuous loud noise)
-  if (
-    clapStreak.length > 0 &&
-    framesSinceClap < CLAP_MIN_SILENCE_AFTER_FRAMES
-  ) {
-    console.log(
-      `[esi] wakeVad clap rejected (too-close): peak=${peak}, framesSince=${framesSinceClap}/${CLAP_MIN_SILENCE_AFTER_FRAMES}`
-    )
-    recentQuietFrames = 0
-    return false
-  }
-
-  const now = Date.now()
-  if (now - lastClapAt < CLAP_MIN_GAP_MS) {
-    recentQuietFrames = 0
-    return false
-  }
-  lastClapAt = now
-  framesSinceClap = 0
-  recentQuietFrames = 0
-
-  // Drop claps outside the rhythm window (current clap + previous ones
-  // each within CLAP_MAX_GAP_MS of the one after it).
-  const cutoff = now - CLAP_MAX_GAP_MS
-  clapStreak = clapStreak.filter((t) => t >= cutoff)
-  clapStreak.push(now)
-
-  console.log(
-    `[esi] wakeVad clap accepted #${clapStreak.length}/${CLAPS_REQUIRED}: peak=${peak} rms=${rmsLevel.toFixed(0)} crest=${crest.toFixed(2)} (need ${CLAPS_REQUIRED} within ${CLAP_MAX_GAP_MS}ms each)`
-  )
-
-  if (clapStreak.length >= CLAPS_REQUIRED) {
-    return true
-  }
-  return false
 }
 
 function rms(frame: Int16Array): number {

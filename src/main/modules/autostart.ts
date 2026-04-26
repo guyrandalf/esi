@@ -38,12 +38,9 @@ function plistBody(execPath: string): string {
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <dict>
-    <key>SuccessfulExit</key>
-    <false/>
-    <key>Crashed</key>
-    <true/>
-  </dict>
+  <false/>
+  <key>LimitLoadToSessionType</key>
+  <string>Aqua</string>
   <key>ProcessType</key>
   <string>Interactive</string>
   <key>EnvironmentVariables</key>
@@ -125,6 +122,26 @@ export async function uninstall(): Promise<void> {
 
 export function plistPath(): string {
   return PLIST_PATH
+}
+
+/**
+ * If an installed plist's body has drifted from what {@link plistBody} now
+ * produces (e.g. we shipped a fix to KeepAlive / SessionType, or the exec
+ * path moved), silently reinstall it so existing users pick up the change
+ * without having to toggle the setting off/on.
+ */
+export async function ensureUpToDate(): Promise<void> {
+  if (!app.isPackaged) return
+  if (!isInstalled()) return
+  try {
+    const current = readFileSync(PLIST_PATH, 'utf8')
+    const expected = plistBody(app.getPath('exe'))
+    if (current === expected) return
+    console.log('[esi] autostart plist out of date — reinstalling')
+    await install()
+  } catch (err) {
+    console.warn('[esi] autostart.ensureUpToDate failed:', err)
+  }
 }
 
 // Marker file so we never prompt the user twice if they opted out.

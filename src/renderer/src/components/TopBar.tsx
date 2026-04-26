@@ -86,7 +86,7 @@ export function TopBar({
             flexShrink: 0
           }}
         >
-          E·S·I
+          QUEEN ESI
           <span
             style={{
               color: 'var(--color-esi-fg-dimmer)',

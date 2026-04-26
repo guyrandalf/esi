@@ -275,7 +275,7 @@ function createTray(): void {
   const image = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 })
   image.setTemplateImage(existsSync(templatePath))
   tray = new Tray(image)
-  tray.setToolTip('Esi')
+  tray.setToolTip('Queen Esi')
   rebuildTrayMenu()
 }
 
@@ -285,7 +285,7 @@ function rebuildTrayMenu(): void {
   const autostartOn = autostart.isInstalled()
   const menu = Menu.buildFromTemplate([
     {
-      label: mainWindow?.isVisible() ? 'Hide Esi' : 'Open Esi',
+      label: mainWindow?.isVisible() ? 'Hide Queen Esi' : 'Open Queen Esi',
       click: () => {
         if (mainWindow?.isVisible()) hideWindow()
         else summonWindow()
@@ -300,7 +300,7 @@ function rebuildTrayMenu(): void {
       }
     },
     {
-      label: 'Start Esi at login',
+      label: 'Start Queen Esi at login',
       type: 'checkbox',
       checked: autostartOn,
       enabled: app.isPackaged,
@@ -316,7 +316,7 @@ function rebuildTrayMenu(): void {
     },
     { type: 'separator' },
     {
-      label: 'Quit Esi',
+      label: 'Quit Queen Esi',
       click: () => {
         isQuitting = true
         app.quit()
@@ -335,10 +335,10 @@ async function maybePromptFirstLaunchAutostart(): Promise<void> {
     buttons: ['Yes, start at login', 'Not now'],
     defaultId: 0,
     cancelId: 1,
-    title: 'Start Esi automatically?',
-    message: 'Would you like Esi to start automatically when you log in?',
+    title: 'Start Queen Esi automatically?',
+    message: 'Would you like Queen Esi to start automatically when you log in?',
     detail:
-      'Esi will run quietly in your menu bar and listen for "hey Esi" or 3 claps to summon the HUD. You can change this any time from the tray menu or Settings.',
+      'Queen Esi will run quietly in your menu bar and listen for "hey Esi", "Esi", or "Queen Esi" to summon the HUD. You can change this any time from the tray menu or Settings.',
     checkboxLabel: "Don't ask again"
   })
   if (response === 0) {
@@ -527,9 +527,34 @@ async function stopHotkeyRecording(): Promise<void> {
   return stopInFlight
 }
 
+// Single-instance lock: prevents a second Esi.app launch (LaunchAgent +
+// macOS "reopen windows" + manual dock click can all fire on the same
+// login) from spawning a duplicate process. Without this each extra
+// launch gets its own HUD and fights for the microphone, so only the
+// first-started instance's wake word actually works.
+const gotPrimaryLock = app.requestSingleInstanceLock()
+if (!gotPrimaryLock) {
+  console.log('[esi] another instance is already running — exiting')
+  app.quit()
+} else {
+  app.on('second-instance', (_event, argv) => {
+    console.log(`[esi] second-instance attempted, argv=${JSON.stringify(argv)} — summoning primary`)
+    summonWindow()
+  })
+}
+
 app.whenReady().then(async () => {
+  if (!gotPrimaryLock) return
+  console.log('[esi] acquired single-instance lock')
   electronApp.setAppUserModelId('com.guyrandalf.esi')
   db.init()
+
+  // Upgrade a stale LaunchAgent plist in-place (KeepAlive off, session
+  // restriction added) so users who already installed autostart don't
+  // need to toggle it off/on to pick up the fix.
+  autostart.ensureUpToDate().catch(() => {
+    /* noop — logged inside */
+  })
 
   // Ensure the user's config directory exists; DO NOT overwrite an
   // existing .env with the empty template (that silently wiped the user's

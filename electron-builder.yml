@@ -2,6 +2,7 @@ appId: com.guyrandalf.esi
 productName: Esi
 directories:
   buildResources: build
+  output: dist.noindex
 files:
   - '!**/.vscode/*'
   - '!src/*'
